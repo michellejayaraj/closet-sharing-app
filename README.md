@@ -21,6 +21,7 @@ Built with React, Vite, React Router, and Tailwind CSS.
 ---
 
 ## Project Structure
+```
 App
 └── Layout
     ├── Navbar
@@ -37,3 +38,4 @@ App
         └── BorrowedItems
             ├── ClosetItem (multiple)
             └── ItemDetailModal (with return button)
+```
