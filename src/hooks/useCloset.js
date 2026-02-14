@@ -159,5 +159,10 @@ export function useCloset() {
     )
   }
 
-  return { myCloset, friendsCloset, addToMyCloset, borrowItem, returnItem }
+  const deleteFromMyCloset = (id) => {
+    const next = myCloset.filter((item) => item.id !== id);
+    persistMyCloset(next);
+  };
+
+  return { myCloset, friendsCloset, addToMyCloset, borrowItem, returnItem, deleteFromMyCloset }
 }

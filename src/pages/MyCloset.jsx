@@ -5,7 +5,7 @@ import { AddItemModal } from "../components/modals/AddItemModal";
 import { ItemDetailModal } from "../components/modals/ItemDetailModal";
 
 export function MyCloset() {
-  const { myCloset, addToMyCloset } = useCloset();
+  const { myCloset, addToMyCloset, deleteFromMyCloset } = useCloset();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -49,6 +49,7 @@ export function MyCloset() {
             key={item.id}
             item={item}
             onClick={() => openDetail(item)}
+            onDelete={deleteFromMyCloset}
           />
         ))}
         </div>

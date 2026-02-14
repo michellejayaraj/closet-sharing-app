@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 export function ClosetItem({
     item,
     onClick,
@@ -5,6 +6,7 @@ export function ClosetItem({
     onButtonClick,
     buttonDisabled = false,
     subtitle,
+    onDelete,
   }) {
     return (
       <div
@@ -14,7 +16,7 @@ export function ClosetItem({
                    hover:-translate-y-1 hover:shadow-lg"
       >
         {/* Image Container */}
-        <div className="overflow-hidden rounded-xl">
+        <div className="relative overflow-hidden rounded-xl">
           <img
             src={item.imageUrl}
             alt={item.name}
@@ -22,6 +24,26 @@ export function ClosetItem({
                        transition-transform duration-300 ease-in-out
                        group-hover:scale-105"
           />
+          {/* Delete button - only shown on hover when onDelete is provided */}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(item.id);
+              }}
+              className="absolute top-2 right-2 p-2 rounded-lg
+              bg-white/80 backdrop-blur-sm text-gray-700
+              opacity-0 group-hover:opacity-100
+              transition-all duration-200
+              hover:text-red-500"
+   
+
+              aria-label="Delete item"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+
         </div>
   
         {/* Text Content */}
