@@ -1,165 +1,157 @@
-import { useEffect, useState } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
 
-const MY_CLOSET_KEY = 'myCloset'
-const FRIENDS_CLOSET_KEY = 'friendsCloset'
+const ClosetContext = createContext(null)
 
-const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`
-
-const safeParseArray = (value) => {
-  if (!value) return []
-  try {
-    const parsed = JSON.parse(value)
-    return Array.isArray(parsed) ? parsed : []
-  } catch (error) {
-    console.error('Failed to parse data from AsyncStorage', error)
-    return []
-  }
-}
-
-const seedFriendsCloset = () => {
-  const items = [
-    {
-      imageUrl:
-        'https://images.urbndata.com/is/image/UrbanOutfitters/101507341_066_b2?$xlarge$&fit=constrain&fmt=webp&qlt=80&wid=720',
-      name: 'Off The Shoulder Top',
-    },
-    {
-      imageUrl:
-        'https://images.urbndata.com/is/image/UrbanOutfitters/105009674_001_b?$xlarge$&fit=constrain&fmt=webp&qlt=80&wid=720',
-      name: 'Lace Boatneck Tee',
-    },
-    {
-      imageUrl:
-        'https://images.urbndata.com/is/image/UrbanOutfitters/104376876_061_m?$xlarge$&fit=constrain&fmt=webp&qlt=80&wid=720',
-      name: 'Beaded Chiffon Top',
-    },
-    {
-      imageUrl:
-        'https://images.urbndata.com/is/image/UrbanOutfitters/104395595_061_m?$xlarge$&fit=constrain&fmt=webp&qlt=80&wid=720',
-      name: 'Mesh Lace Up Corset',
-    },
-    {
-      imageUrl:
-        'https://dam.dynamiteclothing.com/m/166f4bc9cad17f84/original/100100887_06V_1920x2880.jpg',
-      name: 'Tube Corset',
-    },
-    {
-      imageUrl:
-        'https://us.princesspolly.com/cdn/shop/products/1-modelinfo-mikayla-us8_1f9e6ee7-9e70-45c9-b2f7-85a4cafff5f4.jpg?v=1755630179&width=1800',
-      name: 'Leather Jacket',
-    },
-  ]
-
-  return items.map((item) => ({
-    id: createId(),
-    imageUrl: item.imageUrl,
-    name: item.name,
+const seedFriendsCloset = () => [
+  {
+    id: '1',
+    imageUrl: 'https://images.urbndata.com/is/image/UrbanOutfitters/101507341_066_b2?$xlarge$&fit=constrain&fmt=webp&qlt=80&wid=720',
+    name: 'Off The Shoulder Top',
     borrowed: false,
-  }))
-}
+  },
+  {
+    id: '2',
+    imageUrl: 'https://images.urbndata.com/is/image/UrbanOutfitters/105009674_001_b?$xlarge$&fit=constrain&fmt=webp&qlt=80&wid=720',
+    name: 'Lace Boatneck Tee',
+    borrowed: false,
+  },
+  {
+    id: '3',
+    imageUrl: 'https://images.urbndata.com/is/image/UrbanOutfitters/104376876_061_m?$xlarge$&fit=constrain&fmt=webp&qlt=80&wid=720',
+    name: 'Beaded Chiffon Top',
+    borrowed: false,
+  },
+  {
+    id: '4',
+    imageUrl: 'https://images.urbndata.com/is/image/UrbanOutfitters/104395595_061_m?$xlarge$&fit=constrain&fmt=webp&qlt=80&wid=720',
+    name: 'Mesh Lace Up Corset',
+    borrowed: false,
+  },
+  {
+    id: '5',
+    imageUrl: 'https://dam.dynamiteclothing.com/m/166f4bc9cad17f84/original/100100887_06V_1920x2880.jpg',
+    name: 'Tube Corset',
+    borrowed: false,
+  },
+  {
+    id: '6',
+    imageUrl: 'https://us.princesspolly.com/cdn/shop/products/1-modelinfo-mikayla-us8_1f9e6ee7-9e70-45c9-b2f7-85a4cafff5f4.jpg?v=1755630179&width=1800',
+    name: 'Leather Jacket',
+    borrowed: false,
+  },
+]
 
-export function useCloset() {
+export function ClosetProvider({ children }) {
   const [myCloset, setMyCloset] = useState([])
-  const [friendsCloset, setFriendsCloset] = useState([])
+  const [friendsCloset, setFriendsCloset] = useState(seedFriendsCloset())
+  const [loading, setLoading] = useState(true)
 
-  // Initial load + seeding
   useEffect(() => {
-    const load = async () => {
-      try {
-        const storedMyCloset = safeParseArray(
-          await AsyncStorage.getItem(MY_CLOSET_KEY),
-        )
-        setMyCloset(storedMyCloset)
-      } catch (error) {
-        console.error('Failed to load myCloset from AsyncStorage', error)
+    const loadCloset = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        return
       }
 
-      try {
-        const rawFriends = await AsyncStorage.getItem(FRIENDS_CLOSET_KEY)
-        const parsedFriends = safeParseArray(rawFriends)
+      const { data, error } = await supabase
+        .from('closet_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
 
-        if (parsedFriends.length > 0) {
-          setFriendsCloset(parsedFriends)
-        } else {
-          const seeded = seedFriendsCloset()
-          setFriendsCloset(seeded)
-          try {
-            await AsyncStorage.setItem(
-              FRIENDS_CLOSET_KEY,
-              JSON.stringify(seeded),
-            )
-          } catch (error) {
-            console.error('Failed to seed friendsCloset in AsyncStorage', error)
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load friendsCloset from AsyncStorage', error)
+      if (error) {
+        console.error('Failed to load closet:', error)
+      } else {
+        setMyCloset(data.map(item => ({
+          id: item.id,
+          name: item.name,
+          imageUrl: item.image_url,
+          borrowed: item.borrowed,
+        })))
       }
+      setLoading(false)
     }
 
-    load()
+    loadCloset()
   }, [])
 
-  const persistMyCloset = (next) => {
-    setMyCloset(next)
-    AsyncStorage.setItem(MY_CLOSET_KEY, JSON.stringify(next)).catch((error) => {
-      console.error('Failed to save myCloset to AsyncStorage', error)
-    })
-  }
+  const addToMyCloset = async (item) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
 
-  const persistFriendsCloset = (updater) => {
-    setFriendsCloset((prev) => {
-      const next =
-        typeof updater === 'function' ? updater(prev) : Array.from(updater)
-
-      AsyncStorage.setItem(
-        FRIENDS_CLOSET_KEY,
-        JSON.stringify(next),
-      ).catch((error) => {
-        console.error('Failed to save friendsCloset to AsyncStorage', error)
+    const { data, error } = await supabase
+      .from('closet_items')
+      .insert({
+        user_id: user.id,
+        name: item.name,
+        image_url: item.imageUrl,
+        borrowed: false,
       })
+      .select()
+      .single()
 
-      return next
-    })
+    if (error) {
+      console.error('Failed to add item:', error)
+    } else {
+      setMyCloset(prev => [{
+        id: data.id,
+        name: data.name,
+        imageUrl: data.image_url,
+        borrowed: data.borrowed,
+      }, ...prev])
+    }
   }
 
-  const addToMyCloset = (item) => {
-    const newItem = {
-      id: createId(),
-      ...item,
+  const deleteFromMyCloset = async (id) => {
+    // Optimistic UI update: remove immediately from local state
+    setMyCloset(prev => prev.filter(item => item.id !== id))
+
+    const { error } = await supabase
+      .from('closet_items')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Failed to delete item:', error)
+      // If delete fails, ideally we would refetch; for now, log the error.
     }
-    const next = [...myCloset, newItem]
-    persistMyCloset(next)
   }
 
   const borrowItem = (id) => {
-    persistFriendsCloset((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, borrowed: true } : item,
-      ),
+    setFriendsCloset(prev =>
+      prev.map(item => item.id === id ? { ...item, borrowed: true } : item)
     )
   }
 
   const returnItem = (id) => {
-    persistFriendsCloset((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, borrowed: false } : item,
-      ),
+    setFriendsCloset(prev =>
+      prev.map(item => item.id === id ? { ...item, borrowed: false } : item)
     )
   }
 
-  const deleteFromMyCloset = (id) => {
-    const next = myCloset.filter((item) => item.id !== id)
-    persistMyCloset(next)
-  }
-
-  return {
+  const value = {
     myCloset,
     friendsCloset,
+    loading,
     addToMyCloset,
     borrowItem,
     returnItem,
     deleteFromMyCloset,
   }
+
+  return (
+    <ClosetContext.Provider value={value}>
+      {children}
+    </ClosetContext.Provider>
+  )
+}
+
+export function useCloset() {
+  const context = useContext(ClosetContext)
+  if (!context) {
+    throw new Error('useCloset must be used within a ClosetProvider')
+  }
+  return context
 }

@@ -5,6 +5,7 @@ import { ClosetItem } from '../components/closet/ClosetItem'
 import { ClosetGrid } from '../components/closet/ClosetGrid'
 import { AddItemModal } from '../components/modals/AddItemModal'
 import { ItemDetailModal } from '../components/modals/ItemDetailModal'
+import { supabase } from '../lib/supabase'
 
 export function MyCloset() {
   const { myCloset, addToMyCloset, deleteFromMyCloset } = useCloset()

@@ -10,12 +10,16 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
+import { decode } from 'base64-arraybuffer'
+import { supabase } from '../../lib/supabase'
 
 export function AddItemModal({ isOpen, onClose, onAdd }) {
   const [imageUrl, setImageUrl] = useState('')
   const [name, setName] = useState('')
-  const [isImageValid, setIsImageValid] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [shouldRender, setShouldRender] = useState(isOpen)
 
   useEffect(() => {
@@ -31,21 +35,73 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
     if (!isOpen) {
       setImageUrl('')
       setName('')
-      setIsImageValid(false)
     }
   }, [isOpen])
 
   if (!shouldRender) return null
 
-  const isDisabled = !imageUrl.trim() || !name.trim()
+  const pickImage = async (fromCamera) => {
+    const permission = fromCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync()
+
+    if (!permission.granted) {
+      alert('Permission required to access photos.')
+      return
+    }
+
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync({ quality: 0.7, base64: true })
+      : await ImagePicker.launchImageLibraryAsync({ quality: 0.7, base64: true })
+
+    if (result.canceled) return
+
+    const asset = result.assets[0]
+    await uploadImage(asset)
+  }
+
+  const uploadImage = async (asset) => {
+    setUploading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const uri = asset.uri
+      const base64 = asset.base64
+
+      if (!base64) {
+        throw new Error('No base64 data returned from image picker')
+      }
+
+      const extFromUri = uri.split('.').pop()
+      const ext = extFromUri && extFromUri.length <= 4 ? extFromUri.toLowerCase() : 'jpg'
+      const normalizedExt = ext === 'jpg' ? 'jpeg' : ext
+      const path = `${user.id}/${Date.now()}.${ext}`
+
+      const fileData = decode(base64)
+
+      const { error } = await supabase.storage
+        .from('closet-images')
+        .upload(path, fileData, { contentType: `image/${normalizedExt}` })
+
+      if (error) throw error
+
+      const { data } = supabase.storage
+        .from('closet-images')
+        .getPublicUrl(path)
+
+      setImageUrl(data.publicUrl)
+    } catch (err) {
+      console.error('Upload failed:', err)
+      alert('Failed to upload image. Try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const isDisabled = !imageUrl || !name.trim() || uploading
 
   const handleAdd = () => {
     if (isDisabled) return
-    onAdd({
-      imageUrl: imageUrl.trim(),
-      name: name.trim(),
-      borrowed: false,
-    })
+    onAdd({ imageUrl, name: name.trim(), borrowed: false })
     onClose()
   }
 
@@ -64,35 +120,41 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
           <Pressable style={styles.card} onPress={() => {}}>
             <Text style={styles.title}>Add New Item</Text>
 
-            <TextInput
-              placeholder="Paste image URL..."
-              placeholderTextColor="#9ca3af"
-              value={imageUrl}
-              onChangeText={(text) => {
-                setImageUrl(text)
-                setIsImageValid(false)
-              }}
-              style={styles.input}
-            />
-
-            {imageUrl && isImageValid && (
+            {imageUrl ? (
               <View style={styles.previewWrap}>
                 <Image
                   source={{ uri: imageUrl }}
                   style={styles.previewImage}
                   resizeMode="cover"
                 />
+                <TouchableOpacity
+                  onPress={() => setImageUrl('')}
+                  style={styles.removeImage}
+                >
+                  <Text style={styles.removeImageText}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.imageButtons}>
+                <TouchableOpacity
+                  onPress={() => pickImage(false)}
+                  style={styles.imageButton}
+                  disabled={uploading}
+                >
+                  {uploading
+                    ? <ActivityIndicator color="#111827" />
+                    : <Text style={styles.imageButtonText}>Choose Photo</Text>
+                  }
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => pickImage(true)}
+                  style={styles.imageButton}
+                  disabled={uploading}
+                >
+                  <Text style={styles.imageButtonText}>Take Photo</Text>
+                </TouchableOpacity>
               </View>
             )}
-
-            {imageUrl ? (
-              <Image
-                source={{ uri: imageUrl }}
-                style={styles.hiddenImage}
-                onLoad={() => setIsImageValid(true)}
-                onError={() => setIsImageValid(false)}
-              />
-            ) : null}
 
             <TextInput
               placeholder="Item name..."
@@ -113,18 +175,10 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
               <TouchableOpacity
                 onPress={handleAdd}
                 disabled={isDisabled}
-                style={[
-                  styles.addButton,
-                  isDisabled && styles.addButtonDisabled,
-                ]}
+                style={[styles.addButton, isDisabled && styles.addButtonDisabled]}
                 activeOpacity={0.8}
               >
-                <Text
-                  style={[
-                    styles.addButtonText,
-                    isDisabled && styles.addButtonTextDisabled,
-                  ]}
-                >
+                <Text style={[styles.addButtonText, isDisabled && styles.addButtonTextDisabled]}>
                   Add Item
                 </Text>
               </TouchableOpacity>
@@ -167,6 +221,43 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: '#111827',
   },
+  imageButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  imageButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageButtonText: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
+  },
+  previewWrap: {
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  removeImage: {
+    marginTop: 8,
+  },
+  removeImageText: {
+    fontSize: 14,
+    color: '#ef4444',
+  },
   input: {
     width: '100%',
     borderWidth: 1,
@@ -180,23 +271,6 @@ const styles = StyleSheet.create({
   },
   inputLast: {
     marginBottom: 20,
-  },
-  previewWrap: {
-    marginBottom: 16,
-  },
-  previewImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  hiddenImage: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    opacity: 0,
-    pointerEvents: 'none',
   },
   actions: {
     flexDirection: 'row',
