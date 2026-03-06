@@ -7,11 +7,14 @@ import { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { Layout } from './components/layout/Layout'
 import { MyCloset } from './pages/MyCloset'
-import { FriendsCloset } from './pages/FriendsCloset'
 import { BorrowedItems } from './pages/BorrowedItems'
 import {Auth} from './pages/Auth'
 import { ClosetProvider } from './hooks/useCloset'
+import { Groups } from './pages/Groups'
+import { GroupDetail } from './pages/GroupDetail'
 import { supabase } from './lib/supabase'
+import { Profile } from './pages/Profile'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 const Stack = createNativeStackNavigator()
 
@@ -48,24 +51,28 @@ export default function App() {
   console.log('Auth screen component is:', Auth)
 
   return (
-    <SafeAreaProvider>
-      <ClosetProvider>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            {session ? (
-              <>
-                <Stack.Screen name="MyCloset" component={withLayout(MyCloset)} />
-                <Stack.Screen name="FriendsCloset" component={withLayout(FriendsCloset)} />
-                <Stack.Screen name="Borrowed" component={withLayout(BorrowedItems)} />
-              </>
-            ) : (
-              <Stack.Screen name="Auth" component={Auth} />
-            )}
-          </Stack.Navigator>
-          <StatusBar style="auto" />
-        </NavigationContainer>
-      </ClosetProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ClosetProvider>
+          <NavigationContainer>
+            <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
+              {session ? (
+                <>
+                  <Stack.Screen name="MyCloset" component={withLayout(MyCloset)} />
+                  <Stack.Screen name="Borrowed" component={withLayout(BorrowedItems)} />
+                  <Stack.Screen name="Groups" component={withLayout(Groups)} />
+                  <Stack.Screen name="GroupDetail" component={withLayout(GroupDetail)} />
+                  <Stack.Screen name="Profile" component={Profile} />
+                </>
+              ) : (
+                <Stack.Screen name="Auth" component={Auth} />
+              )}
+            </Stack.Navigator>
+            <StatusBar style="auto" />
+          </NavigationContainer>
+        </ClosetProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   )
 }
 

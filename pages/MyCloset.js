@@ -1,18 +1,18 @@
 import { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, FlatList} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native'
 import { useCloset } from '../hooks/useCloset'
 import { ClosetItem } from '../components/closet/ClosetItem'
 import { ClosetGrid } from '../components/closet/ClosetGrid'
 import { AddItemModal } from '../components/modals/AddItemModal'
 import { ItemDetailModal } from '../components/modals/ItemDetailModal'
-import { supabase } from '../lib/supabase'
 
 export function MyCloset() {
-  const { myCloset, addToMyCloset, deleteFromMyCloset } = useCloset()
+  const { myCloset, addToMyCloset, deleteFromMyCloset, refetch } = useCloset()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
   const openDetail = (item) => {
     setSelectedItem(item)
@@ -34,6 +34,15 @@ export function MyCloset() {
     </View>
   )
 
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      await refetch()
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -54,7 +63,13 @@ export function MyCloset() {
           </Text>
         </View>
       ) : (
-        <ClosetGrid data={myCloset} renderItem={renderItem} />
+        <ClosetGrid
+          data={myCloset}
+          renderItem={renderItem}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        />
       )}
 
       <AddItemModal

@@ -1,6 +1,6 @@
 import { FlatList } from 'react-native'
 
-export function ClosetGrid({ data, renderItem }) {
+export function ClosetGrid({ data, renderItem, refreshControl }) {
   return (
     <FlatList
       data={data}
@@ -13,6 +13,7 @@ export function ClosetGrid({ data, renderItem }) {
         paddingBottom: 24,
       }}
       showsVerticalScrollIndicator={false}
+      refreshControl={refreshControl}
     />
   )
 }

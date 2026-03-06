@@ -4,7 +4,7 @@ import { Navbar } from './Navbar'
 
 export function Layout({ children }) {
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <Navbar />
       <View style={styles.main}>{children}</View>
     </SafeAreaView>

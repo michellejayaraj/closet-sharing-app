@@ -76,6 +76,10 @@ export function ItemDetailModal({
             <View style={styles.content}>
               <Text style={styles.title}>{item.name}</Text>
 
+              {item.ownerName ? (
+                <Text style={styles.ownerText}>From: {item.ownerName}</Text>
+              ) : null}
+
               {item.borrowed && (
                 <View style={styles.badgeWrap}>
                   <Text style={styles.badge}>Borrowed</Text>
@@ -90,6 +94,17 @@ export function ItemDetailModal({
                     activeOpacity={0.8}
                   >
                     <Text style={styles.primaryButtonText}>Borrow</Text>
+                  </TouchableOpacity>
+                )}
+                {showBorrowButton && item.borrowed && (
+                  <TouchableOpacity
+                    disabled
+                    style={styles.disabledButton}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.disabledButtonText}>
+                      Already Borrowed
+                    </Text>
                   </TouchableOpacity>
                 )}
                 {showReturnButton && (
@@ -172,6 +187,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: '#111827',
   },
+  ownerText: {
+    fontSize: 14,
+    color: '#4b5563',
+    marginBottom: 8,
+  },
   badgeWrap: {
     marginBottom: 16,
   },
@@ -200,5 +220,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#fff',
+  },
+  disabledButton: {
+    backgroundColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  disabledButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6b7280',
   },
 })
