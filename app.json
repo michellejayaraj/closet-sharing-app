@@ -2,6 +2,7 @@
   "expo": {
     "name": "closet",
     "slug": "closet",
+    "scheme": "clueless-closet",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -27,6 +28,16 @@
     },
     "plugins": [
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9482cd29-83b9-4a2c-82d2-5120a588d3f0"
+      }
+    },
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/9482cd29-83b9-4a2c-82d2-5120a588d3f0"
+    },
+    "owner": "michellejayaraj"
   }
 }

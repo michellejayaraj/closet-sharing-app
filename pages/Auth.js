@@ -28,6 +28,28 @@ export function Auth() {
     setLoading(false)
   }
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address first.');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+  
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      // This is the "magic link" back to your app
+      redirectTo: 'exp://u.expo.dev/9482cd29-83b9-4a2c-82d2-5120a588d3f0?channel-name=preview',
+    });
+  
+    if (error) {
+      setError(error.message);
+    } else {
+      alert('Password reset link sent to your email!');
+    }
+    setLoading(false);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{isLogin ? 'Welcome back' : 'Create account'}</Text>
@@ -50,6 +72,15 @@ export function Auth() {
         onChangeText={setPassword}
         secureTextEntry
       />
+
+      {isLogin && (
+        <TouchableOpacity 
+          onPress={handleForgotPassword} 
+          style={{ alignSelf: 'flex-end', marginBottom: 24, marginTop: -8 }}
+        >
+          <Text style={[styles.toggle, { textAlign: 'right' }]}>Forgot password?</Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity
         style={styles.button}
