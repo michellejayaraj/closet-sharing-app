@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native'
 import { useCloset } from '../hooks/useCloset'
 import { ClosetItem } from '../components/closet/ClosetItem'
 import { ClosetGrid } from '../components/closet/ClosetGrid'
@@ -7,7 +7,7 @@ import { AddItemModal } from '../components/modals/AddItemModal'
 import { ItemDetailModal } from '../components/modals/ItemDetailModal'
 
 export function MyCloset() {
-  const { myCloset, addToMyCloset, deleteFromMyCloset, refetch } = useCloset()
+  const { myCloset, loading, addToMyCloset, deleteFromMyCloset, refetch } = useCloset()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
@@ -56,7 +56,11 @@ export function MyCloset() {
         </TouchableOpacity>
       </View>
 
-      {!myCloset || myCloset.length === 0 ? (
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#000" />
+        </View>
+      ) : !myCloset || myCloset.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>
             Your closet is empty. Add your first item!
@@ -112,6 +116,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyState: {
     flex: 1,

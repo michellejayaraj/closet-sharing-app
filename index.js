@@ -31,15 +31,24 @@ function withLayout(Component) {
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [passwordRecovery, setPasswordRecovery] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('session:', session)  // add this
       setSession(session)
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecovery(true)
+      }
+      if (event === 'SIGNED_OUT') {
+        setPasswordRecovery(false)
+      }
+      if (event === 'USER_UPDATED') {
+        setPasswordRecovery(false)
+      }
       setSession(session)
     })
 
@@ -48,15 +57,13 @@ export default function App() {
 
   if (loading) return <View style={{ flex: 1, backgroundColor: '#fff' }} />
 
-  console.log('Auth screen component is:', Auth)
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ClosetProvider>
           <NavigationContainer>
             <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
-              {session ? (
+              {(session && !passwordRecovery) ? (
                 <>
                   <Stack.Screen name="MyCloset" component={withLayout(MyCloset)} />
                   <Stack.Screen name="Borrowed" component={withLayout(BorrowedItems)} />
@@ -65,7 +72,9 @@ export default function App() {
                   <Stack.Screen name="Profile" component={Profile} />
                 </>
               ) : (
-                <Stack.Screen name="Auth" component={Auth} />
+                <Stack.Screen name="Auth">
+                  {() => <Auth initialRecovery={passwordRecovery} />}
+                </Stack.Screen>
               )}
             </Stack.Navigator>
             <StatusBar style="auto" />

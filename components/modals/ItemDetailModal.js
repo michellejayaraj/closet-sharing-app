@@ -87,7 +87,7 @@ export function ItemDetailModal({
               )}
 
               <View style={styles.actions}>
-                {showBorrowButton && !item.borrowed && (
+                {showBorrowButton && !item.borrowed && !item.borrowedByOther && (
                   <TouchableOpacity
                     onPress={handleBorrow}
                     style={styles.primaryButton}
@@ -104,6 +104,17 @@ export function ItemDetailModal({
                   >
                     <Text style={styles.disabledButtonText}>
                       Already Borrowed
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {showBorrowButton && !item.borrowed && item.borrowedByOther && (
+                  <TouchableOpacity
+                    disabled
+                    style={styles.disabledButton}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.disabledButtonText}>
+                      Unavailable
                     </Text>
                   </TouchableOpacity>
                 )}
