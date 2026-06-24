@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Animated,
 } from 'react-native'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
+import { useFocusEffect } from '@react-navigation/native'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import * as FileSystemLegacy from 'expo-file-system/legacy'
@@ -35,9 +36,7 @@ export function Profile({ isGuest = false, onExitGuest }) {
 
   const [findFriendsOpen, setFindFriendsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-
-  // TODO: wire borrowed, lent, and groups counts when profile stats are loaded
-  const closetStats = { borrowed: 0, lent: 0, groups: 0 }
+  const [closetStats, setClosetStats] = useState({ borrowed: 0, lent: 0, groups: 0 })
 
   const [userEmail, setUserEmail] = useState('')
   const [userId, setUserId] = useState(null)
@@ -69,6 +68,53 @@ export function Profile({ isGuest = false, onExitGuest }) {
   useEffect(() => {
     if (!isGuest) loadProfile()
   }, [])
+
+  const loadClosetStats = async (uid) => {
+    try {
+      const [borrowedResult, lentResult, groupsResult] = await Promise.all([
+        supabase
+          .from('borrowed_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('borrower_id', uid)
+          .is('returned_at', null),
+        supabase
+          .from('borrowed_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('owner_id', uid)
+          .is('returned_at', null),
+        supabase
+          .from('group_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', uid),
+      ])
+
+      if (borrowedResult.error) {
+        console.error('Failed to load borrowed count:', borrowedResult.error)
+      }
+      if (lentResult.error) {
+        console.error('Failed to load lent count:', lentResult.error)
+      }
+      if (groupsResult.error) {
+        console.error('Failed to load groups count:', groupsResult.error)
+      }
+
+      setClosetStats({
+        borrowed: borrowedResult.count ?? 0,
+        lent: lentResult.count ?? 0,
+        groups: groupsResult.count ?? 0,
+      })
+    } catch (err) {
+      console.error('Unexpected error loading closet stats:', err)
+    }
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isGuest && userId) {
+        loadClosetStats(userId)
+      }
+    }, [isGuest, userId]),
+  )
 
   const loadProfile = async () => {
     try {
@@ -102,6 +148,8 @@ export function Profile({ isGuest = false, onExitGuest }) {
         setAvatarOriginalUrl(profile.avatar_original_url || null)
         setAvatarCacheBust(Date.now())
       }
+
+      await loadClosetStats(user.id)
     } catch (err) {
       console.error('Unexpected error loading profile:', err)
       Alert.alert('Error', 'Something went wrong while loading your profile.')
