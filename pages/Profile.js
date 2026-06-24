@@ -21,8 +21,10 @@ import { PanGestureHandler, PinchGestureHandler, State } from 'react-native-gest
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { decode } from 'base64-arraybuffer'
 import { supabase } from '../lib/supabase'
+import { Button } from '../components/ui/Button'
+import { colors, spacing, radii, typography } from '../lib/theme'
 
-export function Profile() {
+export function Profile({ isGuest = false, onExitGuest }) {
   const navigation = useNavigation()
   const insets = useSafeAreaInsets()
   const [loadingProfile, setLoadingProfile] = useState(true)
@@ -57,7 +59,7 @@ export function Profile() {
   const pinchRef = useRef(null)
 
   useEffect(() => {
-    loadProfile()
+    if (!isGuest) loadProfile()
   }, [])
 
   const loadProfile = async () => {
@@ -519,6 +521,34 @@ export function Profile() {
     )
   }
 
+  if (isGuest) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Profile</Text>
+        </View>
+        <View style={styles.guestContent}>
+          <Text style={styles.guestHeading}>Guest Mode</Text>
+          <Text style={styles.guestMessage}>
+            Create an account to save your closet, upload photos, join groups, and share items with friends.
+          </Text>
+          <Button
+            onPress={() => onExitGuest?.('signup')}
+            style={styles.guestCta}
+          >
+            Create Account
+          </Button>
+          <TouchableOpacity
+            onPress={() => onExitGuest?.('login')}
+            style={styles.guestLoginLink}
+          >
+            <Text style={styles.guestLoginText}>Log In</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   if (loadingProfile) {
     return (
       <View style={styles.centered}>
@@ -530,23 +560,19 @@ export function Profile() {
   return (
     <>
       <SafeAreaView style={styles.container}>
-        <View style={[styles.header]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
+        <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
-          <View style={styles.headerRightPlaceholder} />
         </View>
 
         <KeyboardAwareScrollView
           style={styles.content}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled"
           enableOnAndroid={true}
           extraScrollHeight={20}
           enableAutomaticScroll={true}
         >
-          <View style={styles.avatarSection}>
+          <View style={styles.profileHero}>
             <TouchableOpacity
               style={styles.avatarContainer}
               onPress={handleAvatarPress}
@@ -571,44 +597,42 @@ export function Profile() {
                 </View>
               )}
             </TouchableOpacity>
+
+            <Text
+              style={[
+                styles.profileName,
+                !displayName.trim() && styles.profileNamePlaceholder,
+              ]}
+            >
+              {displayName.trim() || 'Add a display name'}
+            </Text>
+            {userEmail ? (
+              <Text style={styles.profileEmail}>{userEmail}</Text>
+            ) : null}
             <Text style={styles.changePhotoText}>Tap to change photo</Text>
           </View>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email</Text>
-            <View style={[styles.input, styles.inputDisabled]}>
-              <Text style={styles.inputDisabledText}>{userEmail}</Text>
-            </View>
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Display name</Text>
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionCardTitle}>Display name</Text>
             <TextInput
               value={displayName}
               onChangeText={setDisplayName}
               placeholder="Add a name..."
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.muted}
               style={styles.input}
             />
+            <Button
+              variant="secondary"
+              onPress={handleSaveProfile}
+              loading={savingProfile}
+              style={styles.saveButton}
+            >
+              Save Changes
+            </Button>
           </View>
 
-          <TouchableOpacity
-            style={[styles.primaryButton, savingProfile && styles.primaryButtonDisabled]}
-            onPress={handleSaveProfile}
-            disabled={savingProfile}
-            activeOpacity={0.8}
-          >
-            {savingProfile ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.primaryButtonText}>Save Changes</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.sectionDivider} />
-
-          <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Find Friends</Text>
-          <View style={styles.friendSearchSection}>
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionCardTitle}>Find Friends</Text>
             <Text style={styles.helperText}>
               Search by email or display name.
             </Text>
@@ -618,25 +642,19 @@ export function Profile() {
                 onChangeText={setFriendQuery}
                 onSubmitEditing={handleSearchFriends}
                 placeholder="Search friends..."
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.muted}
                 style={[styles.input, styles.searchInput]}
                 autoCapitalize="none"
               />
-              <TouchableOpacity
-                style={[
-                  styles.searchButton,
-                  (!friendQuery.trim() || searchingFriends) && styles.searchButtonDisabled,
-                ]}
+              <Button
+                variant="secondary"
                 onPress={handleSearchFriends}
-                disabled={!friendQuery.trim() || searchingFriends}
-                activeOpacity={0.8}
+                loading={searchingFriends}
+                disabled={!friendQuery.trim()}
+                style={styles.searchButton}
               >
-                {searchingFriends ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.searchButtonText}>Search</Text>
-                )}
-              </TouchableOpacity>
+                Search
+              </Button>
             </View>
 
             {friendResults.length === 0 && friendQuery.trim().length > 0 && !searchingFriends ? (
@@ -753,57 +771,46 @@ export function Profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    backgroundColor: '#fff',
-  },
-  backButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
-  backButtonText: {
-    fontSize: 14,
-    color: '#111827',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  headerRightPlaceholder: {
-    width: 40,
+    fontSize: typography.screenTitle.fontSize,
+    fontWeight: typography.screenTitle.fontWeight,
+    letterSpacing: typography.screenTitle.letterSpacing,
+    color: colors.text,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
   },
-  avatarSection: {
+  contentContainer: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xl,
+  },
+  profileHero: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: spacing.md,
   },
   avatarContainer: {
     width: 96,
     height: 96,
     borderRadius: 48,
     overflow: 'hidden',
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.surfaceSoft,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   avatarImage: {
     width: '100%',
@@ -815,12 +822,12 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.surfaceSoft,
   },
   avatarInitial: {
     fontSize: 32,
     fontWeight: '600',
-    color: '#4b5563',
+    color: colors.muted,
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -828,109 +835,100 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  changePhotoText: {
-    marginTop: 8,
-    fontSize: 13,
-    color: '#6b7280',
+  profileName: {
+    marginTop: spacing.sm + 2,
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    color: colors.text,
+    textAlign: 'center',
   },
-  fieldGroup: {
-    marginBottom: 16,
+  profileNamePlaceholder: {
+    color: colors.muted,
+    fontWeight: '500',
+  },
+  profileEmail: {
+    marginTop: 2,
+    fontSize: typography.caption.fontSize,
+    color: colors.muted,
+    textAlign: 'center',
+  },
+  changePhotoText: {
+    marginTop: spacing.xs,
+    fontSize: typography.caption.fontSize,
+    color: colors.muted,
+  },
+  sectionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.sm + 4,
+    marginBottom: spacing.sm + 4,
+  },
+  sectionCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.sm,
   },
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#4b5563',
+    color: colors.muted,
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#fff',
-  },
-  inputDisabled: {
-    backgroundColor: '#f3f4f6',
-  },
-  inputDisabledText: {
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  primaryButton: {
-    marginTop: 8,
-    borderRadius: 8,
-    backgroundColor: '#000',
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonDisabled: {
-    backgroundColor: '#9ca3af',
-  },
-  primaryButtonText: {
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
     fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
+    color: colors.text,
+    backgroundColor: colors.background,
   },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: '#e5e7eb',
-    marginVertical: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  friendSearchSection: {
-    marginBottom: 24,
+  saveButton: {
+    marginTop: spacing.sm + 4,
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: 7,
   },
   helperText: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginBottom: 8,
+    fontSize: typography.caption.fontSize,
+    color: colors.muted,
+    marginBottom: spacing.sm,
+    lineHeight: 17,
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   searchInput: {
     flex: 1,
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   searchButton: {
-    borderRadius: 8,
-    backgroundColor: '#000',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchButtonDisabled: {
-    backgroundColor: '#9ca3af',
-  },
-  searchButtonText: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '500',
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: 7,
   },
   emptyResultsText: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.muted,
   },
   friendRowWrapper: {
-    marginTop: 12,
+    marginTop: spacing.sm,
   },
   friendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: colors.background,
+    borderRadius: radii.sm,
+    padding: spacing.sm + 2,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   friendAvatarWrapper: {
     marginRight: 12,
@@ -944,14 +942,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   friendAvatarInitial: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#4b5563',
+    color: colors.muted,
   },
   friendInfo: {
     flex: 1,
@@ -959,33 +957,36 @@ const styles = StyleSheet.create({
   friendName: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#111827',
+    color: colors.text,
   },
   friendEmail: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.muted,
     marginTop: 2,
   },
   addFriendButton: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#111827',
+    borderRadius: radii.full,
+    backgroundColor: colors.text,
   },
   addFriendButtonText: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '500',
+    fontSize: typography.buttonLabelSm.fontSize,
+    fontWeight: typography.buttonLabelSm.fontWeight,
+    letterSpacing: typography.buttonLabelSm.letterSpacing,
+    lineHeight: typography.buttonLabelSm.lineHeight,
+    color: colors.surface,
   },
   signOutContainer: {
-    marginTop: 24,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
   },
   signOutButton: {
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   signOutText: {
-    fontSize: 14,
+    fontSize: typography.body.fontSize,
     fontWeight: '500',
     color: '#ef4444',
   },
@@ -1041,7 +1042,7 @@ const styles = StyleSheet.create({
   cropButton: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 999,
+    borderRadius: radii.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1050,8 +1051,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   cropSecondaryButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: typography.buttonLabel.fontSize,
+    fontWeight: typography.buttonLabel.fontWeight,
+    letterSpacing: typography.buttonLabel.letterSpacing,
+    lineHeight: typography.buttonLabel.lineHeight,
     color: '#111827',
   },
   cropPrimaryButton: {
@@ -1059,9 +1062,45 @@ const styles = StyleSheet.create({
     backgroundColor: '#111827',
   },
   cropPrimaryButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: typography.buttonLabel.fontSize,
+    fontWeight: typography.buttonLabel.fontWeight,
+    letterSpacing: typography.buttonLabel.letterSpacing,
+    lineHeight: typography.buttonLabel.lineHeight,
     color: '#fff',
+  },
+  guestContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
+  },
+  guestHeading: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  guestMessage: {
+    fontSize: 15,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.xl,
+  },
+  guestCta: {
+    alignSelf: 'stretch',
+    paddingVertical: 14,
+    marginBottom: spacing.md,
+  },
+  guestLoginLink: {
+    paddingVertical: 8,
+  },
+  guestLoginText: {
+    fontSize: 14,
+    color: colors.muted,
+    textAlign: 'center',
   },
 })
 
