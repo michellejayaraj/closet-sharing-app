@@ -1,10 +1,15 @@
 import { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native'
+import Feather from '@expo/vector-icons/Feather'
 import { useCloset } from '../hooks/useCloset'
-import { ClosetItem } from '../components/closet/ClosetItem'
 import { ClosetGrid } from '../components/closet/ClosetGrid'
+import { ItemCard } from '../components/closet/ItemCard'
 import { AddItemModal } from '../components/modals/AddItemModal'
 import { ItemDetailModal } from '../components/modals/ItemDetailModal'
+import { Button } from '../components/ui/Button'
+import { StatusBadge } from '../components/ui/StatusBadge'
+import { ScreenHeader } from '../components/ui/ScreenHeader'
+import { colors, spacing, typography } from '../lib/theme'
 
 export function MyCloset() {
   const { myCloset, loading, addToMyCloset, deleteFromMyCloset, refetch } = useCloset()
@@ -24,14 +29,22 @@ export function MyCloset() {
     setIsDetailOpen(false)
   }
 
+  const handleDelete = async (id) => {
+    await deleteFromMyCloset(id)
+    closeDetail()
+  }
+
   const renderItem = ({ item }) => (
-    <View style={styles.gridItem}>
-      <ClosetItem
-        item={item}
-        onClick={() => openDetail(item)}
-        onDelete={deleteFromMyCloset}
-      />
-    </View>
+    <ItemCard
+      item={item}
+      onPress={() => openDetail(item)}
+      badge={
+        item.borrowed
+          ? <StatusBadge label="Borrowed" style={styles.itemBadge} />
+          : null
+      }
+      style={styles.gridItem}
+    />
   )
 
   const handleRefresh = async () => {
@@ -45,26 +58,33 @@ export function MyCloset() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>My Closet</Text>
-        <TouchableOpacity
-          onPress={() => setIsModalOpen(true)}
-          style={styles.addButton}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.addButtonText}>Add Item</Text>
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="My Closet"
+        action={
+          <Button onPress={() => setIsModalOpen(true)}>
+            Add Item
+          </Button>
+        }
+      />
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#000" />
+          <ActivityIndicator size="small" color={colors.text} />
         </View>
       ) : !myCloset || myCloset.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>
-            Your closet is empty. Add your first item!
+        <View style={styles.emptyContainer}>
+          <Feather name="grid" size={20} color={colors.muted} style={styles.emptyIcon} />
+          <Text style={styles.emptyTitle}>Your closet is empty</Text>
+          <Text style={styles.emptyDescription}>
+            Add your first piece to start building your closet.
           </Text>
+          <TouchableOpacity
+            onPress={() => setIsModalOpen(true)}
+            activeOpacity={0.7}
+            style={styles.emptyLink}
+          >
+            <Text style={styles.emptyLinkText}>Add item →</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <ClosetGrid
@@ -86,6 +106,7 @@ export function MyCloset() {
         isOpen={isDetailOpen}
         onClose={closeDetail}
         item={selectedItem}
+        onDelete={handleDelete}
       />
     </View>
   )
@@ -95,49 +116,50 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  addButton: {
-    borderRadius: 8,
-    backgroundColor: '#000',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  addButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emptyState: {
+  emptyContainer: {
     flex: 1,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#d1d5db',
-    padding: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
-  emptyText: {
-    fontSize: 16,
-    color: '#4b5563',
+  emptyIcon: {
+    marginBottom: spacing.md,
+    opacity: 0.7,
+  },
+  emptyTitle: {
+    fontSize: typography.sectionHeading.fontSize,
+    fontWeight: '600',
+    color: colors.text,
     textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  emptyDescription: {
+    fontSize: typography.body.fontSize,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: spacing.lg,
+  },
+  emptyLink: {
+    paddingVertical: spacing.xs,
+  },
+  emptyLinkText: {
+    fontSize: typography.body.fontSize,
+    fontWeight: '500',
+    color: colors.pop,
   },
   gridItem: {
-    flex: 1,
+    width: '100%',
+  },
+  itemBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
   },
 })

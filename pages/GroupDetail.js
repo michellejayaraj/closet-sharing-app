@@ -9,13 +9,18 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Modal,
   TextInput,
-  Pressable,
 } from 'react-native'
 import Feather from '@expo/vector-icons/Feather'
 import { supabase } from '../lib/supabase'
 import { ItemDetailModal } from '../components/modals/ItemDetailModal'
+import { ItemCard } from '../components/closet/ItemCard'
+import { Button } from '../components/ui/Button'
+import { EmptyState } from '../components/ui/EmptyState'
+import { ModalShell } from '../components/ui/ModalShell'
+import { ScreenHeader } from '../components/ui/ScreenHeader'
+import { StatusBadge } from '../components/ui/StatusBadge'
+import { colors, spacing, radii, typography } from '../lib/theme'
 
 export function GroupDetail({ route }) {
   const [group, setGroup] = useState(route.params.group)
@@ -180,22 +185,24 @@ export function GroupDetail({ route }) {
 
   if (loading) return (
     <View style={styles.centered}>
-      <ActivityIndicator size="large" />
+      <ActivityIndicator size="large" color={colors.text} />
     </View>
   )
 
   return (
     <View style={styles.container}>
-      <View style={styles.titleRow}>
-        <Text style={styles.title}>{group.name}</Text>
-        <TouchableOpacity
-          onPress={openEditModal}
-          style={styles.editIconButton}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Feather name="edit-2" size={18} color="#6b7280" />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title={group.name}
+        action={
+          <TouchableOpacity
+            onPress={openEditModal}
+            style={styles.editIconButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="edit-2" size={18} color={colors.muted} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         horizontal
@@ -243,11 +250,9 @@ export function GroupDetail({ route }) {
           </Text>
 
           {selectedMember.items.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>
-                {`${getLabel(selectedMember)} hasn't added anything yet.`}
-              </Text>
-            </View>
+            <EmptyState
+              message={`${getLabel(selectedMember)} hasn't added anything yet.`}
+            />
           ) : (
             <FlatList
               data={selectedMember.items}
@@ -256,29 +261,16 @@ export function GroupDetail({ route }) {
               columnWrapperStyle={{ gap: 12, marginBottom: 12 }}
               contentContainerStyle={{ paddingBottom: 24 }}
               renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.itemCard}
-                  activeOpacity={0.8}
+                <ItemCard
+                  item={item}
                   onPress={() => openDetail(item)}
-                >
-                  {item.imageUrl ? (
-                    <Image
-                      source={{ uri: item.imageUrl }}
-                      style={styles.itemImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.itemImagePlaceholder} />
-                  )}
-                  {borrowedByOthers.has(item.id) && (
-                    <View style={styles.unavailableBadge}>
-                      <Text style={styles.unavailableBadgeText}>Borrowed</Text>
-                    </View>
-                  )}
-                  <Text style={styles.itemName} numberOfLines={2}>
-                    {item.name}
-                  </Text>
-                </TouchableOpacity>
+                  badge={
+                    borrowedByOthers.has(item.id)
+                      ? <StatusBadge label="Borrowed" style={styles.itemBadge} />
+                      : null
+                  }
+                  style={{ flex: 1 }}
+                />
               )}
             />
           )}
@@ -286,11 +278,7 @@ export function GroupDetail({ route }) {
       )}
 
       {members.length === 0 && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>
-            No other members in this group yet. Share your invite code!
-          </Text>
-        </View>
+        <EmptyState message="No other members in this group yet. Share your invite code!" />
       )}
 
       <ItemDetailModal
@@ -310,68 +298,33 @@ export function GroupDetail({ route }) {
         showBorrowButton
       />
 
-      <Modal
+      <ModalShell
         visible={editModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEditModalOpen(false)}
+        onClose={() => setEditModalOpen(false)}
+        title="Edit Group Name"
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setEditModalOpen(false)}
-        >
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Edit Group Name</Text>
-            <TextInput
-              placeholder="Group name..."
-              placeholderTextColor="#9ca3af"
-              value={editGroupName}
-              onChangeText={setEditGroupName}
-              style={styles.modalInput}
-              autoFocus
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                onPress={() => setEditModalOpen(false)}
-                style={styles.modalCancelButton}
-              >
-                <Text style={styles.modalCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSaveGroupName}
-                disabled={
-                  saving ||
-                  !editGroupName.trim() ||
-                  editGroupName.trim() === group.name
-                }
-                style={[
-                  styles.modalSaveButton,
-                  (saving ||
-                    !editGroupName.trim() ||
-                    editGroupName.trim() === group.name) &&
-                    styles.modalButtonDisabled,
-                ]}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text
-                    style={[
-                      styles.modalSaveButtonText,
-                      (saving ||
-                        !editGroupName.trim() ||
-                        editGroupName.trim() === group.name) &&
-                        styles.modalSaveButtonTextDisabled,
-                    ]}
-                  >
-                    Save
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        <TextInput
+          placeholder="Group name..."
+          placeholderTextColor={colors.muted}
+          value={editGroupName}
+          onChangeText={setEditGroupName}
+          style={styles.input}
+          autoFocus
+        />
+        <View style={styles.modalActions}>
+          <Button variant="secondary" onPress={() => setEditModalOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onPress={handleSaveGroupName}
+            loading={saving}
+            disabled={!editGroupName.trim() || editGroupName.trim() === group.name}
+          >
+            Save
+          </Button>
+        </View>
+      </ModalShell>
     </View>
   )
 }
@@ -379,33 +332,23 @@ export function GroupDetail({ route }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#111827',
-    flex: 1,
-  },
   editIconButton: {
     padding: 4,
   },
   tabs: {
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   tabsContent: {
-    gap: 8,
-    paddingRight: 16,
+    gap: spacing.sm,
+    paddingRight: spacing.md,
   },
   tab: {
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignSelf: 'flex-start',
   },
   tabInner: {
@@ -414,15 +357,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tabActive: {
-    backgroundColor: '#000',
+    backgroundColor: colors.text,
+    borderColor: colors.text,
   },
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6b7280',
+    color: colors.muted,
   },
   tabTextActive: {
-    color: '#fff',
+    color: colors.surface,
   },
   tabAvatar: {
     width: 24,
@@ -433,142 +377,40 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabAvatarInitial: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#4b5563',
+    color: colors.muted,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 12,
+    fontSize: typography.sectionHeading.fontSize,
+    fontWeight: typography.sectionHeading.fontWeight,
+    color: colors.text,
+    marginBottom: spacing.sm + 4,
   },
-  emptyState: {
-    flex: 1,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#d1d5db',
-    padding: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#4b5563',
-    textAlign: 'center',
-  },
-  itemCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  itemImage: {
-    width: '100%',
-    aspectRatio: 3 / 4,
-  },
-  itemImagePlaceholder: {
-    width: '100%',
-    aspectRatio: 3 / 4,
-    backgroundColor: '#f3f4f6',
-  },
-  itemName: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#111827',
-    padding: 8,
-  },
-  unavailableBadge: {
+  itemBadge: {
     position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    top: spacing.sm,
+    left: spacing.sm,
   },
-  unavailableBadgeText: {
-    fontSize: 11,
-    color: '#fff',
-    fontWeight: '500',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  modalCard: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 16,
-    color: '#111827',
-  },
-  modalInput: {
+  input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#fff',
-    marginBottom: 20,
+    color: colors.text,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.lg - 4,
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 12,
-  },
-  modalCancelButton: {
-    borderRadius: 8,
-    backgroundColor: '#e5e7eb',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  modalCancelButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  modalSaveButton: {
-    borderRadius: 8,
-    backgroundColor: '#000',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  modalButtonDisabled: {
-    backgroundColor: '#d1d5db',
-  },
-  modalSaveButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
-  },
-  modalSaveButtonTextDisabled: {
-    color: '#6b7280',
+    gap: spacing.sm,
   },
 })
