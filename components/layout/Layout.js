@@ -1,12 +1,13 @@
 import { View, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Navbar } from './Navbar'
+import { colors } from '../../lib/theme'
 
 export function Layout({ children }) {
   return (
-    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-      <Navbar />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.main}>{children}</View>
+      <Navbar />
     </SafeAreaView>
   )
 }
@@ -14,11 +15,12 @@ export function Layout({ children }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafa',
+    backgroundColor: colors.background,
   },
   main: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 24,
+    paddingTop: 24,
+    paddingBottom: 8,
   },
 })
