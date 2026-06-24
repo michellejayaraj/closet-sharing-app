@@ -80,7 +80,11 @@ export default function App() {
                   <Stack.Screen name="Groups" component={withLayout(Groups)} />
                   <Stack.Screen name="GroupDetail" component={withLayout(GroupDetail)} />
                   <Stack.Screen name="Profile">
-                    {(props) => <Profile {...props} isGuest={isGuest} onExitGuest={handleExitGuest} />}
+                    {(props) => (
+                      <Layout>
+                        <Profile {...props} isGuest={isGuest} onExitGuest={handleExitGuest} />
+                      </Layout>
+                    )}
                   </Stack.Screen>
                 </>
               ) : (

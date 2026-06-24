@@ -13,23 +13,31 @@ import {
   Animated,
 } from 'react-native'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
-import { useNavigation } from '@react-navigation/native'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import * as FileSystemLegacy from 'expo-file-system/legacy'
 import { PanGestureHandler, PinchGestureHandler, State } from 'react-native-gesture-handler'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { decode } from 'base64-arraybuffer'
+import Feather from '@expo/vector-icons/Feather'
 import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
+import { ScreenHeader } from '../components/ui/ScreenHeader'
 import { colors, spacing, radii, typography } from '../lib/theme'
 
+const SETTINGS_ICON_WIDTH = 22
+
 export function Profile({ isGuest = false, onExitGuest }) {
-  const navigation = useNavigation()
   const insets = useSafeAreaInsets()
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [savingProfile, setSavingProfile] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+
+  const [findFriendsOpen, setFindFriendsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
+  // TODO: wire borrowed, lent, and groups counts when profile stats are loaded
+  const closetStats = { borrowed: 0, lent: 0, groups: 0 }
 
   const [userEmail, setUserEmail] = useState('')
   const [userId, setUserId] = useState(null)
@@ -122,8 +130,6 @@ export function Profile({ isGuest = false, onExitGuest }) {
         Alert.alert('Error', 'Could not save your changes.')
         return
       }
-
-      navigation.goBack()
     } catch (err) {
       console.error('Unexpected error saving profile:', err)
       Alert.alert('Error', 'Something went wrong while saving your profile.')
@@ -523,10 +529,8 @@ export function Profile({ isGuest = false, onExitGuest }) {
 
   if (isGuest) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
-        </View>
+      <View style={styles.container}>
+        <ScreenHeader title="Profile" />
         <View style={styles.guestContent}>
           <Text style={styles.guestHeading}>Guest Mode</Text>
           <Text style={styles.guestMessage}>
@@ -545,7 +549,7 @@ export function Profile({ isGuest = false, onExitGuest }) {
             <Text style={styles.guestLoginText}>Log In</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     )
   }
 
@@ -557,129 +561,282 @@ export function Profile({ isGuest = false, onExitGuest }) {
     )
   }
 
+  const renderSettingsRow = ({
+    icon,
+    label,
+    onPress,
+    destructive = false,
+    showChevron = true,
+    isLast = false,
+  }) => (
+    <>
+      <TouchableOpacity
+        style={styles.settingsRow}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.settingsRowLeft}>
+          <View style={styles.settingsRowIconCol}>
+            {icon ? (
+              <Feather
+                name={icon}
+                size={18}
+                color={destructive ? '#C94C4C' : colors.text}
+              />
+            ) : null}
+          </View>
+          <Text style={[styles.settingsRowLabel, destructive && styles.settingsRowDestructive]}>
+            {label}
+          </Text>
+        </View>
+        {showChevron && !destructive ? (
+          <Feather name="chevron-right" size={18} color={colors.muted} />
+        ) : null}
+      </TouchableOpacity>
+      {!isLast ? <View style={styles.settingsRowDivider} /> : null}
+    </>
+  )
+
+  const renderModalHeader = (title, onClose, closeLabel = 'Cancel') => (
+    <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.sm }]}>
+      <TouchableOpacity onPress={onClose} style={styles.modalClose}>
+        <Text style={styles.modalCloseText}>{closeLabel}</Text>
+      </TouchableOpacity>
+      <Text style={styles.modalTitle}>{title}</Text>
+      <View style={styles.modalHeaderSpacer} />
+    </View>
+  )
+
+  const renderSettingsHeader = () => (
+    <View style={[styles.settingsModalHeader, { paddingTop: insets.top + spacing.sm }]}>
+      <TouchableOpacity
+        onPress={() => setSettingsOpen(false)}
+        style={styles.settingsBackBtn}
+        activeOpacity={0.7}
+      >
+        <Feather name="chevron-left" size={20} color={colors.text} />
+      </TouchableOpacity>
+      <Text style={styles.settingsModalTitle}>Settings</Text>
+      <View style={styles.modalHeaderSpacer} />
+    </View>
+  )
+
   return (
     <>
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
-        </View>
+      {/* ── Main Profile overview ───────────────────────────────────────── */}
+      <View style={styles.container}>
+        <ScreenHeader
+          title="Profile"
+          action={
+            <TouchableOpacity
+              onPress={() => setSettingsOpen(true)}
+              style={styles.settingsGearBtn}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Feather name="settings" size={20} color={colors.text} />
+            </TouchableOpacity>
+          }
+        />
 
         <KeyboardAwareScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled"
           enableOnAndroid={true}
-          extraScrollHeight={20}
-          enableAutomaticScroll={true}
+          showsVerticalScrollIndicator={false}
         >
+          {/* Avatar + name + email */}
           <View style={styles.profileHero}>
             <TouchableOpacity
-              style={styles.avatarContainer}
               onPress={handleAvatarPress}
               activeOpacity={0.8}
               disabled={uploadingAvatar}
+              style={styles.avatarTouchable}
             >
-              {avatarUrl ? (
-                <Image
-                  source={{ uri: `${avatarUrl}?t=${avatarCacheBust}` }}
-                  style={styles.avatarImage}
-                />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarInitial}>
-                    {(displayName || userEmail || '?').charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              {uploadingAvatar && (
-                <View style={styles.avatarOverlay}>
-                  <ActivityIndicator color="#fff" />
-                </View>
-              )}
+              <View style={styles.avatarContainer}>
+                {avatarUrl ? (
+                  <Image
+                    source={{ uri: `${avatarUrl}?t=${avatarCacheBust}` }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarInitial}>
+                      {(displayName || userEmail || '?').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                {uploadingAvatar && (
+                  <View style={styles.avatarOverlay}>
+                    <ActivityIndicator color="#fff" />
+                  </View>
+                )}
+              </View>
+              <Text style={styles.changePhotoText}>Tap to change photo</Text>
             </TouchableOpacity>
-
-            <Text
-              style={[
-                styles.profileName,
-                !displayName.trim() && styles.profileNamePlaceholder,
-              ]}
-            >
-              {displayName.trim() || 'Add a display name'}
-            </Text>
             {userEmail ? (
               <Text style={styles.profileEmail}>{userEmail}</Text>
             ) : null}
-            <Text style={styles.changePhotoText}>Tap to change photo</Text>
-          </View>
 
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionCardTitle}>Display name</Text>
-            <TextInput
-              value={displayName}
-              onChangeText={setDisplayName}
-              placeholder="Add a name..."
-              placeholderTextColor={colors.muted}
-              style={styles.input}
-            />
-            <Button
-              variant="secondary"
-              onPress={handleSaveProfile}
-              loading={savingProfile}
-              style={styles.saveButton}
-            >
-              Save Changes
-            </Button>
-          </View>
-
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionCardTitle}>Find Friends</Text>
-            <Text style={styles.helperText}>
-              Search by email or display name.
-            </Text>
-            <View style={styles.searchRow}>
+            <View style={styles.profileEditBlock}>
               <TextInput
-                value={friendQuery}
-                onChangeText={setFriendQuery}
-                onSubmitEditing={handleSearchFriends}
-                placeholder="Search friends..."
+                value={displayName}
+                onChangeText={setDisplayName}
+                placeholder="Add a display name..."
                 placeholderTextColor={colors.muted}
-                style={[styles.input, styles.searchInput]}
-                autoCapitalize="none"
+                style={styles.profileEditInput}
+                autoCapitalize="words"
+                autoCorrect={false}
               />
               <Button
-                variant="secondary"
-                onPress={handleSearchFriends}
-                loading={searchingFriends}
-                disabled={!friendQuery.trim()}
-                style={styles.searchButton}
+                variant="primary"
+                onPress={handleSaveProfile}
+                loading={savingProfile}
+                style={styles.profileSaveButton}
               >
-                Search
+                Save Changes
               </Button>
             </View>
-
-            {friendResults.length === 0 && friendQuery.trim().length > 0 && !searchingFriends ? (
-              <Text style={styles.emptyResultsText}>No results found.</Text>
-            ) : null}
-
-            {friendResults.map((item) => (
-              <View key={item.id} style={styles.friendRowWrapper}>
-                {renderFriendItem({ item })}
-              </View>
-            ))}
           </View>
 
-          <View style={styles.signOutContainer}>
-            <TouchableOpacity
-              onPress={handleSignOut}
-              style={styles.signOutButton}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </TouchableOpacity>
+          {/* Closet stats */}
+          <View style={styles.statsSection}>
+            <Text style={styles.statsSectionTitle}>Closet Stats</Text>
+            <View style={styles.statsRow}>
+              {[
+                { label: 'Borrowed', value: closetStats.borrowed },
+                { label: 'Lent', value: closetStats.lent },
+                { label: 'Groups', value: closetStats.groups },
+              ].map((stat) => (
+                <View key={stat.label} style={styles.statTile}>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         </KeyboardAwareScrollView>
-      </SafeAreaView>
+      </View>
 
+      {/* ── Find Friends modal ──────────────────────────────────────────── */}
+      <Modal
+        visible={findFriendsOpen}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setFindFriendsOpen(false)}
+      >
+        <View style={styles.modalScreen}>
+          {renderModalHeader('Find Friends', () => setFindFriendsOpen(false))}
+
+          <KeyboardAwareScrollView
+            contentContainerStyle={styles.modalContentContainer}
+            keyboardShouldPersistTaps="handled"
+            enableOnAndroid={true}
+            extraScrollHeight={20}
+          >
+            <View style={styles.sectionCard}>
+              <Text style={styles.helperText}>
+                Search by email or display name.
+              </Text>
+              <View style={styles.searchRow}>
+                <TextInput
+                  value={friendQuery}
+                  onChangeText={setFriendQuery}
+                  onSubmitEditing={handleSearchFriends}
+                  placeholder="Search friends..."
+                  placeholderTextColor={colors.muted}
+                  style={[styles.input, styles.searchInput]}
+                  autoCapitalize="none"
+                />
+                <Button
+                  variant="secondary"
+                  onPress={handleSearchFriends}
+                  loading={searchingFriends}
+                  disabled={!friendQuery.trim()}
+                  style={styles.searchButton}
+                >
+                  Search
+                </Button>
+              </View>
+
+              {friendResults.length === 0 && friendQuery.trim().length > 0 && !searchingFriends ? (
+                <Text style={styles.emptyResultsText}>No results found.</Text>
+              ) : null}
+
+              {friendResults.map((item) => (
+                <View key={item.id} style={styles.friendRowWrapper}>
+                  {renderFriendItem({ item })}
+                </View>
+              ))}
+            </View>
+          </KeyboardAwareScrollView>
+        </View>
+      </Modal>
+
+      {/* ── Settings modal ──────────────────────────────────────────────── */}
+      <Modal
+        visible={settingsOpen}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setSettingsOpen(false)}
+      >
+        <View style={[styles.modalScreen, styles.settingsContainer]}>
+          {renderSettingsHeader()}
+
+          <KeyboardAwareScrollView contentContainerStyle={styles.settingsContentContainer}>
+            <Text style={[styles.settingsSectionHeader, styles.settingsSectionHeaderFirst]}>
+              Social
+            </Text>
+            <View style={styles.settingsCard}>
+              {renderSettingsRow({
+                icon: 'search',
+                label: 'Find Friends',
+                onPress: () => {
+                  setSettingsOpen(false)
+                  setFindFriendsOpen(true)
+                },
+                isLast: true,
+              })}
+            </View>
+
+            <Text style={styles.settingsSectionHeader}>App</Text>
+            <View style={styles.settingsCard}>
+              {renderSettingsRow({
+                icon: 'bell',
+                label: 'Notifications',
+                onPress: () =>
+                  Alert.alert('Coming soon', 'Notification preferences are on the way.'),
+                isLast: false,
+              })}
+              {renderSettingsRow({
+                icon: 'info',
+                label: 'About Clueless Closet',
+                onPress: () =>
+                  Alert.alert('Clueless Closet', 'A chic shared closet app.'),
+                isLast: true,
+              })}
+            </View>
+
+            <Text style={styles.settingsSectionHeader}>Account</Text>
+            <View style={styles.settingsCard}>
+              {renderSettingsRow({
+                icon: 'log-out',
+                label: 'Sign Out',
+                onPress: () => {
+                  setSettingsOpen(false)
+                  handleSignOut()
+                },
+                destructive: true,
+                showChevron: false,
+                isLast: true,
+              })}
+            </View>
+          </KeyboardAwareScrollView>
+        </View>
+      </Modal>
+
+      {/* ── Crop editor (full-screen, unchanged) ───────────────────────── */}
       <Modal
         visible={cropEditorVisible && !!cropImageUri}
         animationType="slide"
@@ -771,46 +928,211 @@ export function Profile({ isGuest = false, onExitGuest }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
   },
-  header: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-  },
-  headerTitle: {
-    fontSize: typography.screenTitle.fontSize,
-    fontWeight: typography.screenTitle.fontWeight,
-    letterSpacing: typography.screenTitle.letterSpacing,
-    color: colors.text,
+  settingsGearBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: spacing.md,
     paddingBottom: spacing.xl,
+  },
+  modalScreen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  modalClose: {
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    minWidth: 52,
+  },
+  modalCloseText: {
+    fontSize: 14,
+    color: colors.muted,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalHeaderSpacer: {
+    minWidth: 52,
+  },
+  modalContentContainer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+  },
+  statsSection: {
+    paddingTop: spacing.sm,
+  },
+  statsSectionTitle: {
+    fontSize: typography.caption.fontSize,
+    fontWeight: '600',
+    color: colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: spacing.sm,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  statTile: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: colors.text,
+    letterSpacing: -0.3,
+  },
+  statLabel: {
+    marginTop: 4,
+    fontSize: typography.caption.fontSize,
+    color: colors.muted,
+  },
+  profileEditBlock: {
+    alignSelf: 'stretch',
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  profileEditInput: {
+    fontSize: 15,
+    color: colors.text,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  profileSaveButton: {
+    alignSelf: 'stretch',
+  },
+  settingsContainer: {
+    backgroundColor: colors.background,
+  },
+  settingsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm + 2,
+    backgroundColor: colors.background,
+  },
+  settingsBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  settingsModalTitle: {
+    fontSize: typography.screenTitle.fontSize,
+    fontWeight: typography.screenTitle.fontWeight,
+    letterSpacing: typography.screenTitle.letterSpacing,
+    color: colors.text,
+  },
+  settingsContentContainer: {
+    paddingBottom: spacing.xl,
+  },
+  settingsSectionHeader: {
+    fontSize: typography.caption.fontSize,
+    fontWeight: '600',
+    color: colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    paddingHorizontal: spacing.md + 4,
+    marginBottom: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  settingsSectionHeaderFirst: {
+    marginTop: spacing.sm,
+  },
+  settingsCard: {
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.md,
+    borderRadius: radii.md,
+    overflow: 'hidden',
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 15,
+  },
+  settingsRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: spacing.sm,
+  },
+  settingsRowIconCol: {
+    width: SETTINGS_ICON_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm + 2,
+  },
+  settingsRowDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginLeft: spacing.md + SETTINGS_ICON_WIDTH + spacing.sm + 2,
+  },
+  settingsRowLabel: {
+    fontSize: typography.body.fontSize,
+    color: colors.text,
+    flexShrink: 1,
+  },
+  settingsRowDestructive: {
+    color: '#C94C4C',
   },
   profileHero: {
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    paddingTop: spacing.xs,
+  },
+  avatarTouchable: {
+    alignItems: 'center',
   },
   avatarContainer: {
     width: 96,
     height: 96,
     borderRadius: 48,
     overflow: 'hidden',
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.pop,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   avatarImage: {
     width: '100%',
@@ -822,12 +1144,12 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.pop,
   },
   avatarInitial: {
     fontSize: 32,
     fontWeight: '600',
-    color: colors.muted,
+    color: colors.surface,
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -835,28 +1157,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  profileName: {
-    marginTop: spacing.sm + 2,
-    fontSize: 18,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  profileNamePlaceholder: {
-    color: colors.muted,
-    fontWeight: '500',
-  },
   profileEmail: {
-    marginTop: 2,
+    marginTop: spacing.sm,
     fontSize: typography.caption.fontSize,
     color: colors.muted,
     textAlign: 'center',
   },
   changePhotoText: {
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
     fontSize: typography.caption.fontSize,
     color: colors.muted,
+    letterSpacing: 0.2,
   },
   sectionCard: {
     backgroundColor: colors.surface,
@@ -888,12 +1199,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
     backgroundColor: colors.background,
-  },
-  saveButton: {
-    marginTop: spacing.sm + 4,
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: 7,
   },
   helperText: {
     fontSize: typography.caption.fontSize,
