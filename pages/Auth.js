@@ -5,82 +5,67 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Alert,
   Platform,
 } from 'react-native'
 import * as Linking from 'expo-linking'
 import Constants from 'expo-constants'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
+import { Button } from '../components/ui/Button'
+import { colors, spacing, typography, radii } from '../lib/theme'
 
-export function Auth({ initialRecovery = false }) {
+// mode: 'landing' | 'login' | 'signup' | 'recovery'
+export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing' }) {
+  const insets = useSafeAreaInsets()
+
+  const [mode, setMode] = useState(initialRecovery ? 'recovery' : initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-
-  const [isRecovery, setIsRecovery] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
   const redirectTo = useMemo(() => {
     if (Platform.OS === 'web') {
-      // EAS Web deployment (friends can click the link in email)
       return 'https://cluelesscloset.expo.app/reset-password'
     }
-
-    // Expo Go cannot open arbitrary custom schemes like clueless-closet://
-    // It *can* open exp://.../--/reset-password (via Linking.createURL).
     if (Constants.appOwnership === 'expo') {
       return Linking.createURL('reset-password')
     }
-
-    // Dev build / standalone
     return 'clueless-closet://reset-password'
   }, [])
 
   useEffect(() => {
-    if (initialRecovery) setIsRecovery(true)
+    if (initialRecovery) setMode('recovery')
   }, [initialRecovery])
 
   const extractParamsFromUrl = (url) => {
     if (!url) return {}
     const hashIndex = url.indexOf('#')
     const queryIndex = url.indexOf('?')
-
     const hash = hashIndex >= 0 ? url.slice(hashIndex + 1) : ''
-    const query = queryIndex >= 0 ? url.slice(queryIndex + 1, hashIndex >= 0 ? hashIndex : undefined) : ''
-
+    const query = queryIndex >= 0
+      ? url.slice(queryIndex + 1, hashIndex >= 0 ? hashIndex : undefined)
+      : ''
     const all = [query, hash].filter(Boolean).join('&')
     if (!all) return {}
-
     return all.split('&').reduce((acc, part) => {
       const [rawKey, rawVal] = part.split('=')
       if (!rawKey) return acc
-      const key = decodeURIComponent(rawKey)
-      const val = decodeURIComponent(rawVal || '')
-      acc[key] = val
+      acc[decodeURIComponent(rawKey)] = decodeURIComponent(rawVal || '')
       return acc
     }, {})
   }
 
   const handleIncomingUrl = async (url) => {
     const params = extractParamsFromUrl(url)
-    const type = params.type
-    const access_token = params.access_token
-    const refresh_token = params.refresh_token
-
-    if (type === 'recovery') {
-      setIsRecovery(true)
-    }
-
-    // Supabase recovery links often include tokens in the URL fragment on web.
-    // In React Native we need to set the session manually.
-    if (access_token && refresh_token) {
+    if (params.type === 'recovery') setMode('recovery')
+    if (params.access_token && params.refresh_token) {
       const { error: setSessionError } = await supabase.auth.setSession({
-        access_token,
-        refresh_token,
+        access_token: params.access_token,
+        refresh_token: params.refresh_token,
       })
       if (setSessionError) {
         console.error('Failed to set recovery session:', setSessionError)
@@ -93,20 +78,13 @@ export function Auth({ initialRecovery = false }) {
     let isMounted = true
 
     Linking.getInitialURL()
-      .then((url) => {
-        if (!isMounted || !url) return
-        handleIncomingUrl(url)
-      })
+      .then((url) => { if (!isMounted || !url) return; handleIncomingUrl(url) })
       .catch((e) => console.error('getInitialURL error:', e))
 
-    const sub = Linking.addEventListener('url', ({ url }) => {
-      handleIncomingUrl(url)
-    })
+    const sub = Linking.addEventListener('url', ({ url }) => handleIncomingUrl(url))
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setIsRecovery(true)
-      }
+      if (event === 'PASSWORD_RECOVERY') setMode('recovery')
     })
 
     return () => {
@@ -119,11 +97,9 @@ export function Auth({ initialRecovery = false }) {
   const handleSubmit = async () => {
     setLoading(true)
     setError(null)
-
-    const { error } = isLogin
+    const { error } = mode === 'login'
       ? await supabase.auth.signInWithPassword({ email, password })
       : await supabase.auth.signUp({ email, password })
-
     if (error) setError(error.message)
     setLoading(false)
   }
@@ -133,14 +109,9 @@ export function Auth({ initialRecovery = false }) {
       setError('Please enter your email address first.')
       return
     }
-
     setLoading(true)
     setError(null)
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    })
-
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
     if (error) {
       setError(error.message)
     } else {
@@ -158,19 +129,16 @@ export function Auth({ initialRecovery = false }) {
       setError('Passwords do not match.')
       return
     }
-
     setLoading(true)
     setError(null)
-
     const { error } = await supabase.auth.updateUser({ password: newPassword })
     if (error) {
       setError(error.message)
       setLoading(false)
       return
     }
-
     Alert.alert('Success', 'Your password has been updated. Please log in.')
-    setIsRecovery(false)
+    setMode('login')
     setPassword('')
     setNewPassword('')
     setConfirmPassword('')
@@ -178,15 +146,51 @@ export function Auth({ initialRecovery = false }) {
     setLoading(false)
   }
 
+  // ─── Landing screen ───────────────────────────────────────────────────────────
+  if (mode === 'landing') {
+    return (
+      <View style={styles.landingContainer}>
+        <View style={[styles.landingHero, { paddingTop: insets.top + 32 }]}>
+          <Text style={styles.wordmark}>Clueless Closet</Text>
+          <Text style={styles.headline}>{'Keep track of what\u2019s yours,\nwhat\u2019s borrowed, and what\u2019s next.'}</Text>
+        </View>
+
+        <View style={[styles.landingActions, { paddingBottom: Math.max(insets.bottom, 24) + 16 }]}>
+          <Button onPress={() => setMode('login')} style={styles.landingCta}>
+            Log In
+          </Button>
+          <Button variant="secondary" onPress={() => setMode('signup')} style={styles.landingCta}>
+            Sign Up
+          </Button>
+          {onGuest && (
+            <TouchableOpacity onPress={onGuest} style={styles.guestLink}>
+              <Text style={styles.guestText}>Continue as Guest  →</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    )
+  }
+
+  // ─── Login / Signup / Recovery form ──────────────────────────────────────────
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>
-        {isRecovery ? 'Reset password' : (isLogin ? 'Welcome back' : 'Create account')}
+    <View style={styles.formContainer}>
+      {mode !== 'recovery' && (
+        <TouchableOpacity
+          onPress={() => { setError(null); setMode('landing') }}
+          style={[styles.backButton, { top: insets.top + 16 }]}
+        >
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+      )}
+
+      <Text style={styles.formTitle}>
+        {mode === 'recovery' ? 'Reset password' : mode === 'login' ? 'Log in' : 'Sign up'}
       </Text>
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {isRecovery ? (
+      {mode === 'recovery' ? (
         <>
           <TextInput
             style={styles.input}
@@ -217,7 +221,6 @@ export function Auth({ initialRecovery = false }) {
             autoCapitalize="none"
             keyboardType="email-address"
           />
-
           <TextInput
             style={styles.input}
             placeholder="Password"
@@ -225,11 +228,10 @@ export function Auth({ initialRecovery = false }) {
             onChangeText={setPassword}
             secureTextEntry
           />
-
-          {isLogin && (
+          {mode === 'login' && (
             <TouchableOpacity
               onPress={handleForgotPassword}
-              style={{ alignSelf: 'flex-end', marginBottom: 24, marginTop: -8 }}
+              style={styles.forgotRow}
             >
               <Text style={[styles.toggle, { textAlign: 'right' }]}>Forgot password?</Text>
             </TouchableOpacity>
@@ -237,26 +239,18 @@ export function Auth({ initialRecovery = false }) {
         </>
       )}
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={isRecovery ? handleUpdatePassword : handleSubmit}
-        disabled={loading}
-        activeOpacity={0.8}
+      <Button
+        onPress={mode === 'recovery' ? handleUpdatePassword : handleSubmit}
+        loading={loading}
+        style={styles.ctaButton}
       >
-        {loading
-          ? <ActivityIndicator color="#fff" />
-          : (
-            <Text style={styles.buttonText}>
-              {isRecovery ? 'Update password' : (isLogin ? 'Log in' : 'Sign up')}
-            </Text>
-          )
-        }
-      </TouchableOpacity>
+        {mode === 'recovery' ? 'Update password' : mode === 'login' ? 'Log in' : 'Sign up'}
+      </Button>
 
-      {isRecovery ? (
+      {mode === 'recovery' ? (
         <TouchableOpacity
           onPress={() => {
-            setIsRecovery(false)
+            setMode('login')
             setNewPassword('')
             setConfirmPassword('')
             setError(null)
@@ -265,59 +259,114 @@ export function Auth({ initialRecovery = false }) {
           <Text style={styles.toggle}>Back to login</Text>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
+        <TouchableOpacity onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
           <Text style={styles.toggle}>
-            {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
+            {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
           </Text>
         </TouchableOpacity>
       )}
-
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
+  // ─── Landing ────────────────────────────────────────────────────────────────
+  landingContainer: {
+    flex: 1,
+    backgroundColor: colors.popPale,
+  },
+  landingHero: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 32,
+    paddingBottom: 44,
+  },
+  wordmark: {
+    fontSize: typography.appName.fontSize,
+    fontWeight: typography.appName.fontWeight,
+    letterSpacing: typography.appName.letterSpacing,
+    color: colors.luxury,
+    marginBottom: 14,
+  },
+  headline: {
+    fontSize: 26,
+    fontWeight: '500',
+    color: colors.luxury,
+    lineHeight: 34,
+    letterSpacing: -0.3,
+    opacity: 0.7,
+  },
+  landingActions: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    paddingHorizontal: 32,
+    paddingTop: 32,
+  },
+  landingCta: {
+    marginBottom: 12,
+    paddingVertical: 14,
+  },
+  guestLink: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  guestText: {
+    fontSize: 14,
+    color: colors.muted,
+  },
+
+  // ─── Form ────────────────────────────────────────────────────────────────────
+  formContainer: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 32,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 32,
+  backButton: {
+    position: 'absolute',
+    left: 24,
+    padding: 8,
+  },
+  backText: {
+    fontSize: 14,
+    color: colors.muted,
+  },
+  formTitle: {
+    fontSize: typography.screenTitle.fontSize,
+    fontWeight: typography.screenTitle.fontWeight,
+    letterSpacing: typography.screenTitle.letterSpacing,
+    color: colors.text,
+    marginBottom: spacing.lg + spacing.sm,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    marginBottom: 16,
+    color: colors.text,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surface,
   },
-  button: {
-    backgroundColor: '#000',
-    borderRadius: 8,
+  ctaButton: {
     paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  forgotRow: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
+    marginTop: -8,
   },
   toggle: {
-    color: '#6b7280',
+    color: colors.muted,
     textAlign: 'center',
     fontSize: 14,
   },
   error: {
     color: '#ef4444',
-    marginBottom: 16,
-    fontSize: 14,
+    marginBottom: spacing.md,
+    fontSize: typography.body.fontSize,
   },
 })
