@@ -56,7 +56,7 @@ export function ClosetProvider({ children }) {
       .from('closet_items')
       .insert({
         user_id: user.id,
-        name: item.name,
+        name: item.name?.trim() ?? '',
         image_url: item.imageUrl,
         borrowed: false,
       })

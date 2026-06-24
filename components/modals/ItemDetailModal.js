@@ -7,7 +7,9 @@ import {
   Modal,
   Pressable,
   TouchableOpacity,
+  Alert,
 } from 'react-native'
+import { typography } from '../../lib/theme'
 
 export function ItemDetailModal({
   isOpen,
@@ -15,6 +17,7 @@ export function ItemDetailModal({
   item,
   onBorrow,
   onReturn,
+  onDelete,
   showBorrowButton = false,
   showReturnButton = false,
 }) {
@@ -45,6 +48,24 @@ export function ItemDetailModal({
     }
   }
 
+  const handleDelete = () => {
+    if (!onDelete) return
+    Alert.alert(
+      'Delete item?',
+      'This will permanently remove the item from your closet.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => onDelete(item.id),
+        },
+      ],
+    )
+  }
+
+  const itemName = item.name?.trim()
+
   return (
     <Modal
       visible={isOpen}
@@ -69,12 +90,14 @@ export function ItemDetailModal({
                 source={{ uri: item.imageUrl }}
                 style={styles.image}
                 resizeMode="contain"
-                accessibilityLabel={item.name}
+                accessibilityLabel={itemName || 'Closet item'}
               />
             </View>
 
             <View style={styles.content}>
-              <Text style={styles.title}>{item.name}</Text>
+              {itemName ? (
+                <Text style={styles.title}>{itemName}</Text>
+              ) : null}
 
               {item.ownerName ? (
                 <Text style={styles.ownerText}>From: {item.ownerName}</Text>
@@ -125,6 +148,15 @@ export function ItemDetailModal({
                     activeOpacity={0.8}
                   >
                     <Text style={styles.primaryButtonText}>Return</Text>
+                  </TouchableOpacity>
+                )}
+                {onDelete && (
+                  <TouchableOpacity
+                    onPress={handleDelete}
+                    style={styles.deleteButton}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.deleteButtonText}>Delete Item</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -228,8 +260,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   primaryButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: typography.buttonLabel.fontSize,
+    fontWeight: typography.buttonLabel.fontWeight,
+    letterSpacing: typography.buttonLabel.letterSpacing,
+    lineHeight: typography.buttonLabel.lineHeight,
     color: '#fff',
   },
   disabledButton: {
@@ -239,8 +273,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   disabledButtonText: {
+    fontSize: typography.buttonLabel.fontSize,
+    fontWeight: typography.buttonLabel.fontWeight,
+    letterSpacing: typography.buttonLabel.letterSpacing,
+    lineHeight: typography.buttonLabel.lineHeight,
+    color: '#6b7280',
+  },
+  deleteButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+  },
+  deleteButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6b7280',
+    color: '#ef4444',
   },
 })

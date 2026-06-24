@@ -15,6 +15,7 @@ import {
 import * as ImagePicker from 'expo-image-picker'
 import { decode } from 'base64-arraybuffer'
 import { supabase } from '../../lib/supabase'
+import { colors, typography } from '../../lib/theme'
 
 export function AddItemModal({ isOpen, onClose, onAdd }) {
   const [imageUrl, setImageUrl] = useState('')
@@ -97,11 +98,12 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
     }
   }
 
-  const isDisabled = !imageUrl || !name.trim() || uploading
+  const isDisabled = !imageUrl || uploading
 
   const handleAdd = () => {
     if (isDisabled) return
-    onAdd({ imageUrl, name: name.trim(), borrowed: false })
+    const trimmedName = name.trim()
+    onAdd({ imageUrl, name: trimmedName, borrowed: false })
     onClose()
   }
 
@@ -157,7 +159,7 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
             )}
 
             <TextInput
-              placeholder="Item name..."
+              placeholder="Name (optional)"
               placeholderTextColor="#9ca3af"
               value={name}
               onChangeText={setName}
@@ -236,9 +238,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   imageButtonText: {
-    fontSize: 14,
+    fontSize: typography.buttonLabel.fontSize,
+    fontWeight: typography.buttonLabel.fontWeight,
+    letterSpacing: typography.buttonLabel.letterSpacing,
+    lineHeight: typography.buttonLabel.lineHeight,
     color: '#111827',
-    fontWeight: '500',
   },
   previewWrap: {
     marginBottom: 16,
@@ -284,8 +288,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   cancelButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: typography.buttonLabel.fontSize,
+    fontWeight: typography.buttonLabel.fontWeight,
+    letterSpacing: typography.buttonLabel.letterSpacing,
+    lineHeight: typography.buttonLabel.lineHeight,
     color: '#374151',
   },
   addButton: {
@@ -298,8 +304,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#d1d5db',
   },
   addButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: typography.buttonLabel.fontSize,
+    fontWeight: typography.buttonLabel.fontWeight,
+    letterSpacing: typography.buttonLabel.letterSpacing,
+    lineHeight: typography.buttonLabel.lineHeight,
     color: '#fff',
   },
   addButtonTextDisabled: {
