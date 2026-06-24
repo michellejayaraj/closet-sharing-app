@@ -6,8 +6,6 @@ import {
   TouchableOpacity,
   FlatList,
   TextInput,
-  Modal,
-  Pressable,
   ActivityIndicator,
   Share,
   Alert,
@@ -15,6 +13,33 @@ import {
 import Swipeable from 'react-native-gesture-handler/Swipeable'
 import { supabase } from '../lib/supabase'
 import { useNavigation } from '@react-navigation/native'
+import { Button } from '../components/ui/Button'
+import { GroupCard } from '../components/groups/GroupCard'
+import { GroupsEmptyHero } from '../components/groups/GroupsEmptyHero'
+import { ModalShell } from '../components/ui/ModalShell'
+import { ScreenHeader } from '../components/ui/ScreenHeader'
+import { colors, spacing, radii, typography } from '../lib/theme'
+
+async function fetchGroupPreviewImages(groupId) {
+  const { data: members, error: membersError } = await supabase
+    .from('group_members')
+    .select('user_id')
+    .eq('group_id', groupId)
+
+  if (membersError || !members?.length) return []
+
+  const userIds = members.map((m) => m.user_id)
+  const { data: items, error: itemsError } = await supabase
+    .from('closet_items')
+    .select('image_url')
+    .in('user_id', userIds)
+    .not('image_url', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(4)
+
+  if (itemsError) return []
+  return (items || []).map((i) => i.image_url).filter(Boolean)
+}
 
 export function Groups() {
   const [groups, setGroups] = useState([])
@@ -40,17 +65,35 @@ export function Groups() {
     }
     setCurrentUserId(user.id)
 
-    const { data, error } = await supabase
+    const { data, error: loadError } = await supabase
       .from('group_members')
       .select('group_id, role, groups(id, name, invite_code, created_by)')
       .eq('user_id', user.id)
 
-    if (error) {
-      console.error('Failed to load groups:', error)
+    if (loadError) {
+      console.error('Failed to load groups:', loadError)
+      setGroups([])
     } else {
-      setGroups(data.map(row => ({ ...row.groups, role: row.role })))
+      const groupsBase = data.map((row) => ({ ...row.groups, role: row.role }))
+      const groupsWithPreviews = await Promise.all(
+        groupsBase.map(async (group) => ({
+          ...group,
+          previewImages: await fetchGroupPreviewImages(group.id),
+        })),
+      )
+      setGroups(groupsWithPreviews)
     }
     setLoading(false)
+  }
+
+  const openCreate = () => {
+    setError(null)
+    setCreateOpen(true)
+  }
+
+  const openJoin = () => {
+    setError(null)
+    setJoinOpen(true)
   }
 
   const createGroup = async () => {
@@ -67,10 +110,10 @@ export function Groups() {
       .single()
 
     if (groupError) {
-        console.error('Create group error:', groupError)
-        setError('Failed to create group.')
-        setSaving(false)
-        return
+      console.error('Create group error:', groupError)
+      setError('Failed to create group.')
+      setSaving(false)
+      return
     }
 
     const { error: memberError } = await supabase
@@ -83,7 +126,7 @@ export function Groups() {
       return
     }
 
-    setGroups(prev => [...prev, { ...group, role: 'owner' }])
+    setGroups((prev) => [...prev, { ...group, role: 'owner', previewImages: [] }])
     setGroupName('')
     setCreateOpen(false)
     setSaving(false)
@@ -118,7 +161,8 @@ export function Groups() {
       return
     }
 
-    setGroups(prev => [...prev, { ...group, role: 'member' }])
+    const previewImages = await fetchGroupPreviewImages(group.id)
+    setGroups((prev) => [...prev, { ...group, role: 'member', previewImages }])
     setInviteCode('')
     setJoinOpen(false)
     setSaving(false)
@@ -140,12 +184,12 @@ export function Groups() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            const { error } = await supabase
+            const { error: deleteError } = await supabase
               .from('groups')
               .delete()
               .eq('id', group.id)
-            if (error) {
-              console.error('Delete group error:', error)
+            if (deleteError) {
+              console.error('Delete group error:', deleteError)
               Alert.alert('Error', 'Could not delete group.')
               return
             }
@@ -166,13 +210,13 @@ export function Groups() {
           text: 'Leave',
           style: 'destructive',
           onPress: async () => {
-            const { error } = await supabase
+            const { error: leaveError } = await supabase
               .from('group_members')
               .delete()
               .eq('group_id', group.id)
               .eq('user_id', currentUserId)
-            if (error) {
-              console.error('Leave group error:', error)
+            if (leaveError) {
+              console.error('Leave group error:', leaveError)
               Alert.alert('Error', 'Could not leave group.')
               return
             }
@@ -199,133 +243,111 @@ export function Groups() {
     </View>
   )
 
-  if (loading) return (
-    <View style={styles.centered}>
-      <ActivityIndicator size="large" />
-    </View>
-  )
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.text} />
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Groups</Text>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity
-            onPress={() => { setError(null); setJoinOpen(true) }}
-            style={[styles.button, styles.secondaryButton]}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.secondaryButtonText}>Join</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => { setError(null); setCreateOpen(true) }}
-            style={styles.button}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.buttonText}>New Group</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScreenHeader
+        title="Groups"
+        action={
+          <View style={styles.headerButtons}>
+            <Button variant="secondary" onPress={openJoin}>
+              Join
+            </Button>
+            <Button variant="primary" onPress={openCreate}>
+              New Group
+            </Button>
+          </View>
+        }
+      />
 
       {groups.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>
-            No groups yet. Create one and invite your friends!
-          </Text>
-        </View>
+        <GroupsEmptyHero onCreate={openCreate} onJoin={openJoin} />
       ) : (
         <FlatList
           data={groups}
-          keyExtractor={item => item.id}
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <Swipeable renderRightActions={() => renderRightActions(item)}>
-              <TouchableOpacity
+              <GroupCard
+                group={item}
                 onPress={() => navigation.navigate('GroupDetail', { group: item })}
-                activeOpacity={0.8}
-              >
-                <View style={styles.groupCard}>
-                  <View style={styles.groupInfo}>
-                    <Text style={styles.groupName}>{item.name}</Text>
-                    <Text style={styles.groupCode}>Code: {item.invite_code}</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={(e) => { e.stopPropagation(); shareInvite(item) }}
-                    style={styles.shareButton}
-                  >
-                    <Text style={styles.shareButtonText}>Share Invite</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
+                onShare={() => shareInvite(item)}
+              />
             </Swipeable>
           )}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListFooterComponent={
+            <Text style={styles.footerHint}>
+              Tap to browse groups · Swipe to leave
+            </Text>
+          }
         />
       )}
 
-      {/* Create Group Modal */}
-      <Modal visible={createOpen} transparent animationType="fade" onRequestClose={() => setCreateOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setCreateOpen(false)}>
-          <Pressable style={styles.card} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Create Group</Text>
-            {error && <Text style={styles.error}>{error}</Text>}
-            <TextInput
-              placeholder="Group name..."
-              placeholderTextColor="#9ca3af"
-              value={groupName}
-              onChangeText={setGroupName}
-              style={styles.input}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setCreateOpen(false)} style={styles.cancelButton}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={createGroup}
-                disabled={saving || !groupName.trim()}
-                style={[styles.button, (saving || !groupName.trim()) && styles.buttonDisabled]}
-              >
-                {saving
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.buttonText}>Create</Text>
-                }
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <ModalShell
+        visible={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Create Group"
+      >
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <TextInput
+          placeholder="Group name..."
+          placeholderTextColor={colors.muted}
+          value={groupName}
+          onChangeText={setGroupName}
+          style={styles.input}
+        />
+        <View style={styles.modalActions}>
+          <Button variant="secondary" onPress={() => setCreateOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onPress={createGroup}
+            loading={saving}
+            disabled={!groupName.trim()}
+          >
+            Create
+          </Button>
+        </View>
+      </ModalShell>
 
-      {/* Join Group Modal */}
-      <Modal visible={joinOpen} transparent animationType="fade" onRequestClose={() => setJoinOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setJoinOpen(false)}>
-          <Pressable style={styles.card} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Join Group</Text>
-            {error && <Text style={styles.error}>{error}</Text>}
-            <TextInput
-              placeholder="Enter invite code..."
-              placeholderTextColor="#9ca3af"
-              value={inviteCode}
-              onChangeText={setInviteCode}
-              style={styles.input}
-              autoCapitalize="characters"
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setJoinOpen(false)} style={styles.cancelButton}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={joinGroup}
-                disabled={saving || !inviteCode.trim()}
-                style={[styles.button, (saving || !inviteCode.trim()) && styles.buttonDisabled]}
-              >
-                {saving
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.buttonText}>Join</Text>
-                }
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <ModalShell
+        visible={joinOpen}
+        onClose={() => setJoinOpen(false)}
+        title="Join Group"
+      >
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <TextInput
+          placeholder="Enter invite code..."
+          placeholderTextColor={colors.muted}
+          value={inviteCode}
+          onChangeText={setInviteCode}
+          style={styles.input}
+          autoCapitalize="characters"
+        />
+        <View style={styles.modalActions}>
+          <Button variant="secondary" onPress={() => setJoinOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onPress={joinGroup}
+            loading={saving}
+            disabled={!inviteCode.trim()}
+          >
+            Join
+          </Button>
+        </View>
+      </ModalShell>
     </View>
   )
 }
@@ -333,61 +355,23 @@ export function Groups() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
+  headerButtons: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
+    gap: spacing.sm,
   },
-  headerButtons: { flexDirection: 'row', gap: 8 },
-  title: { fontSize: 24, fontWeight: '600', color: '#111827' },
-  button: {
-    borderRadius: 8,
-    backgroundColor: '#000',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  listContent: {
+    paddingBottom: spacing.lg,
   },
-  buttonDisabled: { backgroundColor: '#d1d5db' },
-  buttonText: { fontSize: 14, fontWeight: '500', color: '#fff' },
-  secondaryButton: { backgroundColor: '#f3f4f6' },
-  secondaryButtonText: { fontSize: 14, fontWeight: '500', color: '#111827' },
-  emptyState: {
-    flex: 1,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#d1d5db',
-    padding: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  footerHint: {
+    marginTop: spacing.sm,
+    fontSize: typography.caption.fontSize,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 16,
+    paddingHorizontal: spacing.md,
   },
-  emptyText: { fontSize: 16, color: '#4b5563', textAlign: 'center' },
-  groupCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  groupInfo: { flex: 1 },
-  groupName: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  groupCode: { fontSize: 13, color: '#6b7280', marginTop: 2 },
-  shareButton: {
-    borderRadius: 8,
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  shareButtonText: { fontSize: 13, fontWeight: '500', color: '#111827' },
   swipeActionContainer: {
-    marginBottom: 12,
+    marginBottom: spacing.md,
     justifyContent: 'center',
     alignItems: 'flex-end',
   },
@@ -395,53 +379,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#ef4444',
     width: 80,
     height: '100%',
-    minHeight: 72,
+    minHeight: 220,
     justifyContent: 'center',
     alignItems: 'center',
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
+    borderTopRightRadius: radii.lg,
+    borderBottomRightRadius: radii.lg,
   },
   swipeActionText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 14,
     fontWeight: '600',
   },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  modalTitle: { fontSize: 20, fontWeight: '600', marginBottom: 16, color: '#111827' },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#111827',
-    marginBottom: 20,
+    color: colors.text,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.lg - 4,
   },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
-  cancelButton: {
-    borderRadius: 8,
-    backgroundColor: '#e5e7eb',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
   },
-  cancelButtonText: { fontSize: 14, fontWeight: '500', color: '#374151' },
-  error: { color: '#ef4444', marginBottom: 12, fontSize: 14 },
+  error: {
+    color: '#ef4444',
+    marginBottom: spacing.sm,
+    fontSize: typography.body.fontSize,
+  },
 })
