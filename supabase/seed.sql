@@ -1,0 +1,4 @@
+-- Intentionally empty.
+--
+-- Phase 2 establishes a reproducible schema without creating shared test
+-- accounts or application data. Add local-only fixtures in a later phase.
