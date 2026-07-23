@@ -1,10 +1,20 @@
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native'
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+} from 'react-native'
 import { GroupCollage } from './GroupCollage'
 import { colors, spacing, radii, typography } from '../../lib/theme'
 
 export function GroupCard({ group, onPress, onShare }) {
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.92} style={styles.card}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.92}
+      style={styles.card}
+    >
       <GroupCollage images={group.previewImages ?? []} style={styles.collage} />
 
       <View style={styles.body}>

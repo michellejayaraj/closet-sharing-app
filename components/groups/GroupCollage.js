@@ -6,9 +6,17 @@ import { colors, radii, spacing } from '../../lib/theme'
 const SLOT_COUNT = 4
 
 const PLACEHOLDER_TILES = [
-  { ionIcon: 'shirt-outline', background: colors.surface, iconColor: colors.muted },
+  {
+    ionIcon: 'shirt-outline',
+    background: colors.surface,
+    iconColor: colors.muted,
+  },
   { icon: 'plus', background: colors.popPale, iconColor: colors.pop },
-  { icon: 'shopping-bag', background: colors.surfaceSoft, iconColor: colors.muted },
+  {
+    icon: 'shopping-bag',
+    background: colors.surfaceSoft,
+    iconColor: colors.muted,
+  },
   { icon: null, background: colors.surfaceSoft, iconColor: colors.muted },
 ]
 
@@ -16,12 +24,7 @@ function PlaceholderTile({ config, compact }) {
   const size = compact ? 18 : 22
 
   return (
-    <View
-      style={[
-        styles.placeholder,
-        { backgroundColor: config.background },
-      ]}
-    >
+    <View style={[styles.placeholder, { backgroundColor: config.background }]}>
       {config.ionIcon ? (
         <Ionicons name={config.ionIcon} size={size} color={config.iconColor} />
       ) : config.icon ? (
@@ -53,7 +56,11 @@ export function GroupCollage({ images = [], style, compact = false }) {
             ]}
           >
             {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.image}
+                resizeMode="cover"
+              />
             ) : (
               <PlaceholderTile config={placeholder} compact={compact} />
             )}

@@ -27,7 +27,11 @@ export function GroupsEmptyHero({ onCreate, onJoin }) {
         <Button onPress={onCreate} style={styles.actionButton}>
           New Group
         </Button>
-        <Button variant="secondary" onPress={onJoin} style={styles.actionButton}>
+        <Button
+          variant="secondary"
+          onPress={onJoin}
+          style={styles.actionButton}
+        >
           Join with Code
         </Button>
       </View>
