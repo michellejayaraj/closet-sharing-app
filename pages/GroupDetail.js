@@ -41,7 +41,9 @@ export function GroupDetail({ route }) {
   }, [])
 
   const loadMembers = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) {
       setLoading(false)
       return
@@ -70,20 +72,20 @@ export function GroupDetail({ route }) {
 
     const myBorrowedIds = new Set(
       (borrowRows || [])
-        .filter(row => row.borrower_id === user.id)
-        .map(row => row.closet_item_id)
+        .filter((row) => row.borrower_id === user.id)
+        .map((row) => row.closet_item_id),
     )
 
     const othersborrowedIds = new Set(
       (borrowRows || [])
-        .filter(row => row.borrower_id !== user.id)
-        .map(row => row.closet_item_id)
+        .filter((row) => row.borrower_id !== user.id)
+        .map((row) => row.closet_item_id),
     )
 
     setBorrowedItemIds(myBorrowedIds)
     setBorrowedByOthers(othersborrowedIds)
 
-    const otherMembers = memberRows.filter(row => row.user_id !== user.id)
+    const otherMembers = memberRows.filter((row) => row.user_id !== user.id)
     const membersWithItems = await Promise.all(
       otherMembers.map(async (row) => {
         const { data: items } = await supabase
@@ -133,7 +135,10 @@ export function GroupDetail({ route }) {
     if (!currentUserId || !selectedMember) return
 
     if (borrowedByOthers.has(itemId)) {
-      Alert.alert('Unavailable', 'This item is already borrowed by someone else.')
+      Alert.alert(
+        'Unavailable',
+        'This item is already borrowed by someone else.',
+      )
       return
     }
 
@@ -146,8 +151,11 @@ export function GroupDetail({ route }) {
 
     if (error) {
       if (error.code === '23505') {
-        Alert.alert('Unavailable', 'This item is already borrowed by someone else.')
-        setBorrowedByOthers(prev => new Set([...prev, itemId]))
+        Alert.alert(
+          'Unavailable',
+          'This item is already borrowed by someone else.',
+        )
+        setBorrowedByOthers((prev) => new Set([...prev, itemId]))
       } else {
         console.error('Borrow error:', error)
         Alert.alert('Error', 'Could not borrow this item. Please try again.')
@@ -183,11 +191,12 @@ export function GroupDetail({ route }) {
     setEditModalOpen(true)
   }
 
-  if (loading) return (
-    <View style={styles.centered}>
-      <ActivityIndicator size="large" color={colors.text} />
-    </View>
-  )
+  if (loading)
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.text} />
+      </View>
+    )
 
   return (
     <View style={styles.container}>
@@ -210,13 +219,13 @@ export function GroupDetail({ route }) {
         style={styles.tabs}
         contentContainerStyle={styles.tabsContent}
       >
-        {members.map(member => (
+        {members.map((member) => (
           <TouchableOpacity
             key={member.userId}
             onPress={() => setSelectedMember(member)}
             style={[
               styles.tab,
-              selectedMember?.userId === member.userId && styles.tabActive
+              selectedMember?.userId === member.userId && styles.tabActive,
             ]}
           >
             <View style={styles.tabInner}>
@@ -232,10 +241,13 @@ export function GroupDetail({ route }) {
                   </Text>
                 </View>
               )}
-              <Text style={[
-                styles.tabText,
-                selectedMember?.userId === member.userId && styles.tabTextActive,
-              ]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  selectedMember?.userId === member.userId &&
+                    styles.tabTextActive,
+                ]}
+              >
                 {getLabel(member)}
               </Text>
             </View>
@@ -256,7 +268,7 @@ export function GroupDetail({ route }) {
           ) : (
             <FlatList
               data={selectedMember.items}
-              keyExtractor={item => item.id}
+              keyExtractor={(item) => item.id}
               numColumns={2}
               columnWrapperStyle={{ gap: 12, marginBottom: 12 }}
               contentContainerStyle={{ paddingBottom: 24 }}
@@ -265,9 +277,9 @@ export function GroupDetail({ route }) {
                   item={item}
                   onPress={() => openDetail(item)}
                   badge={
-                    borrowedByOthers.has(item.id)
-                      ? <StatusBadge label="Borrowed" style={styles.itemBadge} />
-                      : null
+                    borrowedByOthers.has(item.id) ? (
+                      <StatusBadge label="Borrowed" style={styles.itemBadge} />
+                    ) : null
                   }
                   style={{ flex: 1 }}
                 />
@@ -319,7 +331,9 @@ export function GroupDetail({ route }) {
             variant="primary"
             onPress={handleSaveGroupName}
             loading={saving}
-            disabled={!editGroupName.trim() || editGroupName.trim() === group.name}
+            disabled={
+              !editGroupName.trim() || editGroupName.trim() === group.name
+            }
           >
             Save
           </Button>

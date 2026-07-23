@@ -58,7 +58,9 @@ export function Groups() {
   }, [])
 
   const loadGroups = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) {
       setLoading(false)
       return
@@ -101,7 +103,9 @@ export function Groups() {
     setSaving(true)
     setError(null)
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
     const { data: group, error: groupError } = await supabase
       .from('groups')
@@ -126,7 +130,10 @@ export function Groups() {
       return
     }
 
-    setGroups((prev) => [...prev, { ...group, role: 'owner', previewImages: [] }])
+    setGroups((prev) => [
+      ...prev,
+      { ...group, role: 'owner', previewImages: [] },
+    ])
     setGroupName('')
     setCreateOpen(false)
     setSaving(false)
@@ -149,7 +156,9 @@ export function Groups() {
       return
     }
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
     const { error: memberError } = await supabase
       .from('group_members')
@@ -201,30 +210,26 @@ export function Groups() {
   }
 
   const handleLeaveGroup = (group) => {
-    Alert.alert(
-      'Leave Group',
-      'Are you sure you want to leave this group?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: async () => {
-            const { error: leaveError } = await supabase
-              .from('group_members')
-              .delete()
-              .eq('group_id', group.id)
-              .eq('user_id', currentUserId)
-            if (leaveError) {
-              console.error('Leave group error:', leaveError)
-              Alert.alert('Error', 'Could not leave group.')
-              return
-            }
-            setGroups((prev) => prev.filter((g) => g.id !== group.id))
-          },
+    Alert.alert('Leave Group', 'Are you sure you want to leave this group?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Leave',
+        style: 'destructive',
+        onPress: async () => {
+          const { error: leaveError } = await supabase
+            .from('group_members')
+            .delete()
+            .eq('group_id', group.id)
+            .eq('user_id', currentUserId)
+          if (leaveError) {
+            console.error('Leave group error:', leaveError)
+            Alert.alert('Error', 'Could not leave group.')
+            return
+          }
+          setGroups((prev) => prev.filter((g) => g.id !== group.id))
         },
-      ],
-    )
+      },
+    ])
   }
 
   const renderRightActions = (item) => (
@@ -233,7 +238,9 @@ export function Groups() {
         style={styles.swipeActionButton}
         activeOpacity={0.8}
         onPress={() =>
-          item.role === 'owner' ? handleDeleteGroup(item) : handleLeaveGroup(item)
+          item.role === 'owner'
+            ? handleDeleteGroup(item)
+            : handleLeaveGroup(item)
         }
       >
         <Text style={styles.swipeActionText}>
@@ -277,7 +284,9 @@ export function Groups() {
             <Swipeable renderRightActions={() => renderRightActions(item)}>
               <GroupCard
                 group={item}
-                onPress={() => navigation.navigate('GroupDetail', { group: item })}
+                onPress={() =>
+                  navigation.navigate('GroupDetail', { group: item })
+                }
                 onShare={() => shareInvite(item)}
               />
             </Swipeable>
