@@ -95,9 +95,7 @@ export function ItemDetailModal({
             </View>
 
             <View style={styles.content}>
-              {itemName ? (
-                <Text style={styles.title}>{itemName}</Text>
-              ) : null}
+              {itemName ? <Text style={styles.title}>{itemName}</Text> : null}
 
               {item.ownerName ? (
                 <Text style={styles.ownerText}>From: {item.ownerName}</Text>
@@ -110,15 +108,17 @@ export function ItemDetailModal({
               )}
 
               <View style={styles.actions}>
-                {showBorrowButton && !item.borrowed && !item.borrowedByOther && (
-                  <TouchableOpacity
-                    onPress={handleBorrow}
-                    style={styles.primaryButton}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.primaryButtonText}>Borrow</Text>
-                  </TouchableOpacity>
-                )}
+                {showBorrowButton &&
+                  !item.borrowed &&
+                  !item.borrowedByOther && (
+                    <TouchableOpacity
+                      onPress={handleBorrow}
+                      style={styles.primaryButton}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.primaryButtonText}>Borrow</Text>
+                    </TouchableOpacity>
+                  )}
                 {showBorrowButton && item.borrowed && (
                   <TouchableOpacity
                     disabled
@@ -136,9 +136,7 @@ export function ItemDetailModal({
                     style={styles.disabledButton}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.disabledButtonText}>
-                      Unavailable
-                    </Text>
+                    <Text style={styles.disabledButtonText}>Unavailable</Text>
                   </TouchableOpacity>
                 )}
                 {showReturnButton && (

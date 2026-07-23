@@ -1,4 +1,9 @@
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native'
+import {
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+} from 'react-native'
 import { colors, spacing, radii, typography } from '../../lib/theme'
 
 /**

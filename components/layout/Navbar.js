@@ -2,13 +2,13 @@ import { View, Text, StyleSheet, Pressable } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Feather from '@expo/vector-icons/Feather'
-import { colors, typography } from '../../lib/theme'
+import { colors } from '../../lib/theme'
 
 const TABS = [
   { name: 'My Closet', screen: 'MyCloset', icon: 'grid' },
-  { name: 'Groups',    screen: 'Groups',   icon: 'users' },
-  { name: 'Borrowed',  screen: 'Borrowed', icon: 'archive' },
-  { name: 'Profile',   screen: 'Profile',  icon: 'user' },
+  { name: 'Groups', screen: 'Groups', icon: 'users' },
+  { name: 'Borrowed', screen: 'Borrowed', icon: 'archive' },
+  { name: 'Profile', screen: 'Profile', icon: 'user' },
 ]
 
 export function Navbar() {
@@ -18,7 +18,9 @@ export function Navbar() {
   const currentRouteName = state?.routes?.[state.index]?.name ?? null
 
   return (
-    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View
+      style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}
+    >
       {TABS.map(({ name, screen, icon }) => {
         const isActive = currentRouteName === screen
         return (

@@ -1,5 +1,5 @@
-import { Modal, View, Text, Pressable, StyleSheet } from 'react-native'
-import { colors, spacing, radii, typography } from '../../lib/theme'
+import { Modal, Text, Pressable, StyleSheet } from 'react-native'
+import { colors, spacing, radii } from '../../lib/theme'
 
 /**
  * Reusable modal wrapper — semi-transparent overlay + white card + title.

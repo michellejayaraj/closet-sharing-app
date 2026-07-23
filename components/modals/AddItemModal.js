@@ -15,7 +15,7 @@ import {
 import * as ImagePicker from 'expo-image-picker'
 import { decode } from 'base64-arraybuffer'
 import { supabase } from '../../lib/supabase'
-import { colors, typography } from '../../lib/theme'
+import { typography } from '../../lib/theme'
 
 export function AddItemModal({ isOpen, onClose, onAdd }) {
   const [imageUrl, setImageUrl] = useState('')
@@ -53,7 +53,10 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
 
     const result = fromCamera
       ? await ImagePicker.launchCameraAsync({ quality: 0.7, base64: true })
-      : await ImagePicker.launchImageLibraryAsync({ quality: 0.7, base64: true })
+      : await ImagePicker.launchImageLibraryAsync({
+          quality: 0.7,
+          base64: true,
+        })
 
     if (result.canceled) return
 
@@ -64,7 +67,9 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
   const uploadImage = async (asset) => {
     setUploading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       const uri = asset.uri
       const base64 = asset.base64
 
@@ -73,7 +78,8 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
       }
 
       const extFromUri = uri.split('.').pop()
-      const ext = extFromUri && extFromUri.length <= 4 ? extFromUri.toLowerCase() : 'jpg'
+      const ext =
+        extFromUri && extFromUri.length <= 4 ? extFromUri.toLowerCase() : 'jpg'
       const normalizedExt = ext === 'jpg' ? 'jpeg' : ext
       const path = `${user.id}/${Date.now()}.${ext}`
 
@@ -85,9 +91,7 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
 
       if (error) throw error
 
-      const { data } = supabase.storage
-        .from('closet-images')
-        .getPublicUrl(path)
+      const { data } = supabase.storage.from('closet-images').getPublicUrl(path)
 
       setImageUrl(data.publicUrl)
     } catch (err) {
@@ -143,10 +147,11 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
                   style={styles.imageButton}
                   disabled={uploading}
                 >
-                  {uploading
-                    ? <ActivityIndicator color="#111827" />
-                    : <Text style={styles.imageButtonText}>Choose Photo</Text>
-                  }
+                  {uploading ? (
+                    <ActivityIndicator color="#111827" />
+                  ) : (
+                    <Text style={styles.imageButtonText}>Choose Photo</Text>
+                  )}
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => pickImage(true)}
@@ -177,10 +182,18 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
               <TouchableOpacity
                 onPress={handleAdd}
                 disabled={isDisabled}
-                style={[styles.addButton, isDisabled && styles.addButtonDisabled]}
+                style={[
+                  styles.addButton,
+                  isDisabled && styles.addButtonDisabled,
+                ]}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.addButtonText, isDisabled && styles.addButtonTextDisabled]}>
+                <Text
+                  style={[
+                    styles.addButtonText,
+                    isDisabled && styles.addButtonTextDisabled,
+                  ]}
+                >
                   Add Item
                 </Text>
               </TouchableOpacity>
