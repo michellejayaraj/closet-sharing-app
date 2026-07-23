@@ -46,13 +46,13 @@ A React (Expo/React Native) app for a platform where users can add clothing item
 
 ## Getting started
 
-**Prerequisites:** Node.js, npm (or yarn), Expo CLI
+**Prerequisites:** Node.js and npm
 
 1. Configure Supabase: create project, add tables and RLS policies, storage buckets (avatars, closet-images)
 2. Update `lib/supabase.js` with your Supabase URL and anon key if needed
 
 ```bash
-npm install
+npm ci
 npm start
 ```
 
@@ -61,3 +61,26 @@ Then choose iOS, Android, or Web in the terminal, or run:
 - `npm run ios`
 - `npm run android`
 - `npm run web`
+
+## Quality checks
+
+Install the exact dependency versions from the lockfile and run the complete
+local verification suite:
+
+```bash
+npm ci
+npm run verify
+```
+
+The combined verification command checks Expo dependency compatibility, runs
+ESLint, verifies formatting, executes smoke tests, and creates a production web
+export in `dist/`.
+
+Checks can also be run separately:
+
+- `npm run doctor` — validate Expo configuration and dependency compatibility
+- `npm run lint` — lint JavaScript source and configuration
+- `npm run format:check` — check formatting without changing files
+- `npm test` — run the Node-based smoke tests
+- `npm run build:web` — create the production web export
+- `npm run format` — apply the repository's formatting rules
