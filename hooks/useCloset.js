@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from 'react'
 import { supabase } from '../lib/supabase'
 
 const ClosetContext = createContext(null)
@@ -8,7 +14,9 @@ export function ClosetProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   const loadCloset = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) {
       setLoading(false)
       setMyCloset([])
@@ -24,32 +32,38 @@ export function ClosetProvider({ children }) {
     if (error) {
       console.error('Failed to load closet:', error)
     } else {
-      setMyCloset(data.map(item => ({
-        id: item.id,
-        name: item.name,
-        imageUrl: item.image_url,
-        borrowed: item.borrowed,
-      })))
+      setMyCloset(
+        data.map((item) => ({
+          id: item.id,
+          name: item.name,
+          imageUrl: item.image_url,
+          borrowed: item.borrowed,
+        })),
+      )
     }
     setLoading(false)
   }, [])
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         loadCloset()
       } else {
         setMyCloset([])
       }
     })
-  
+
     loadCloset()
-  
+
     return () => subscription.unsubscribe()
   }, [])
 
   const addToMyCloset = async (item) => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) return
 
     const { data, error } = await supabase
@@ -66,23 +80,23 @@ export function ClosetProvider({ children }) {
     if (error) {
       console.error('Failed to add item:', error)
     } else {
-      setMyCloset(prev => [{
-        id: data.id,
-        name: data.name,
-        imageUrl: data.image_url,
-        borrowed: data.borrowed,
-      }, ...prev])
+      setMyCloset((prev) => [
+        {
+          id: data.id,
+          name: data.name,
+          imageUrl: data.image_url,
+          borrowed: data.borrowed,
+        },
+        ...prev,
+      ])
     }
   }
 
   const deleteFromMyCloset = async (id) => {
     // Optimistic UI update: remove immediately from local state
-    setMyCloset(prev => prev.filter(item => item.id !== id))
+    setMyCloset((prev) => prev.filter((item) => item.id !== id))
 
-    const { error } = await supabase
-      .from('closet_items')
-      .delete()
-      .eq('id', id)
+    const { error } = await supabase.from('closet_items').delete().eq('id', id)
 
     if (error) {
       console.error('Failed to delete item:', error)
@@ -99,9 +113,7 @@ export function ClosetProvider({ children }) {
   }
 
   return (
-    <ClosetContext.Provider value={value}>
-      {children}
-    </ClosetContext.Provider>
+    <ClosetContext.Provider value={value}>{children}</ClosetContext.Provider>
   )
 }
 
