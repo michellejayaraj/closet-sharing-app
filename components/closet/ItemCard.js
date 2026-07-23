@@ -1,4 +1,11 @@
-import { View, Text, Image, Pressable, StyleSheet, Platform } from 'react-native'
+import {
+  View,
+  Text,
+  Image,
+  Pressable,
+  StyleSheet,
+  Platform,
+} from 'react-native'
 import { colors, spacing, radii, typography } from '../../lib/theme'
 
 export function ItemCard({
@@ -14,7 +21,11 @@ export function ItemCard({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed, style]}
+      style={({ pressed }) => [
+        styles.card,
+        pressed && styles.cardPressed,
+        style,
+      ]}
     >
       <View style={[styles.imageContainer, { aspectRatio: tileAspectRatio }]}>
         {item.imageUrl ? (

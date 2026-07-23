@@ -1,4 +1,11 @@
-import { View, Image, StyleSheet, Text, Pressable, TouchableOpacity } from 'react-native'
+import {
+  View,
+  Image,
+  StyleSheet,
+  Text,
+  Pressable,
+  TouchableOpacity,
+} from 'react-native'
 import { Trash2 } from 'lucide-react-native'
 
 export function ClosetItem({
@@ -45,7 +52,10 @@ export function ClosetItem({
         <TouchableOpacity
           onPress={() => onButtonClick && onButtonClick(item.id)}
           disabled={buttonDisabled}
-          style={[styles.actionButton, buttonDisabled && styles.actionButtonDisabled]}
+          style={[
+            styles.actionButton,
+            buttonDisabled && styles.actionButtonDisabled,
+          ]}
           activeOpacity={0.8}
         >
           <Text

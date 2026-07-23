@@ -13,9 +13,7 @@ export function ClosetGrid({ data, renderItem, refreshControl }) {
       data={data}
       keyExtractor={(item) => item.id}
       renderItem={(info) => (
-        <View style={{ width: tileWidth }}>
-          {renderItem(info)}
-        </View>
+        <View style={{ width: tileWidth }}>{renderItem(info)}</View>
       )}
       numColumns={2}
       columnWrapperStyle={{ marginBottom: COLUMN_GAP, gap: COLUMN_GAP }}
