@@ -67,11 +67,12 @@ export function BorrowedItems() {
           .in('id', ownerIds)
 
         if (profilesError) {
-          console.error('Failed to load owners for borrowed items:', profilesError)
-        } else if (profiles) {
-          profileById = new Map(
-            profiles.map((p) => [p.id, p]),
+          console.error(
+            'Failed to load owners for borrowed items:',
+            profilesError,
           )
+        } else if (profiles) {
+          profileById = new Map(profiles.map((p) => [p.id, p]))
         }
       }
 
@@ -85,10 +86,7 @@ export function BorrowedItems() {
             name: row.closet_items?.name,
             imageUrl: row.closet_items?.image_url,
           },
-          ownerName:
-            profile?.display_name ||
-            profile?.email ||
-            'Unknown',
+          ownerName: profile?.display_name || profile?.email || 'Unknown',
         }
       })
 
@@ -100,7 +98,6 @@ export function BorrowedItems() {
 
   useEffect(() => {
     loadBorrowedItems()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleReturn = async (borrowedItemId) => {
@@ -169,7 +166,12 @@ export function BorrowedItems() {
         </View>
       ) : borrowedItems.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Feather name="archive" size={20} color={colors.muted} style={styles.emptyIcon} />
+          <Feather
+            name="archive"
+            size={20}
+            color={colors.muted}
+            style={styles.emptyIcon}
+          />
           <Text style={styles.emptyTitle}>Nothing borrowed yet</Text>
           <Text style={styles.emptyDescription}>
             Borrowed pieces from friends will appear here.
@@ -190,10 +192,7 @@ export function BorrowedItems() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         />
       )}

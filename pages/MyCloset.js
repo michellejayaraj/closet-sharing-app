@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { View, Text, StyleSheet, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  RefreshControl,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native'
 import Feather from '@expo/vector-icons/Feather'
 import { useCloset } from '../hooks/useCloset'
 import { ClosetGrid } from '../components/closet/ClosetGrid'
@@ -12,7 +19,8 @@ import { ScreenHeader } from '../components/ui/ScreenHeader'
 import { colors, spacing, typography } from '../lib/theme'
 
 export function MyCloset() {
-  const { myCloset, loading, addToMyCloset, deleteFromMyCloset, refetch } = useCloset()
+  const { myCloset, loading, addToMyCloset, deleteFromMyCloset, refetch } =
+    useCloset()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
@@ -39,9 +47,9 @@ export function MyCloset() {
       item={item}
       onPress={() => openDetail(item)}
       badge={
-        item.borrowed
-          ? <StatusBadge label="Borrowed" style={styles.itemBadge} />
-          : null
+        item.borrowed ? (
+          <StatusBadge label="Borrowed" style={styles.itemBadge} />
+        ) : null
       }
       style={styles.gridItem}
     />
@@ -60,11 +68,7 @@ export function MyCloset() {
     <View style={styles.container}>
       <ScreenHeader
         title="My Closet"
-        action={
-          <Button onPress={() => setIsModalOpen(true)}>
-            Add Item
-          </Button>
-        }
+        action={<Button onPress={() => setIsModalOpen(true)}>Add Item</Button>}
       />
 
       {loading ? (
@@ -73,7 +77,12 @@ export function MyCloset() {
         </View>
       ) : !myCloset || myCloset.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Feather name="grid" size={20} color={colors.muted} style={styles.emptyIcon} />
+          <Feather
+            name="grid"
+            size={20}
+            color={colors.muted}
+            style={styles.emptyIcon}
+          />
           <Text style={styles.emptyTitle}>Your closet is empty</Text>
           <Text style={styles.emptyDescription}>
             Add your first piece to start building your closet.
