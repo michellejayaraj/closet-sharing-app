@@ -17,7 +17,11 @@ import { useFocusEffect } from '@react-navigation/native'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import * as FileSystemLegacy from 'expo-file-system/legacy'
-import { PanGestureHandler, PinchGestureHandler, State } from 'react-native-gesture-handler'
+import {
+  PanGestureHandler,
+  PinchGestureHandler,
+  State,
+} from 'react-native-gesture-handler'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { decode } from 'base64-arraybuffer'
 import Feather from '@expo/vector-icons/Feather'
@@ -36,7 +40,11 @@ export function Profile({ isGuest = false, onExitGuest }) {
 
   const [findFriendsOpen, setFindFriendsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [closetStats, setClosetStats] = useState({ borrowed: 0, lent: 0, groups: 0 })
+  const [closetStats, setClosetStats] = useState({
+    borrowed: 0,
+    lent: 0,
+    groups: 0,
+  })
 
   const [userEmail, setUserEmail] = useState('')
   const [userId, setUserId] = useState(null)
@@ -219,7 +227,7 @@ export function Profile({ isGuest = false, onExitGuest }) {
       (error) => {
         console.error('Failed to get image size for crop editor:', error)
         setCropImageSize(null)
-      }
+      },
     )
   }
 
@@ -228,10 +236,9 @@ export function Profile({ isGuest = false, onExitGuest }) {
     setCropImageUri(null)
   }
 
-  const onPinchEvent = Animated.event(
-    [{ nativeEvent: { scale } }],
-    { useNativeDriver: true }
-  )
+  const onPinchEvent = Animated.event([{ nativeEvent: { scale } }], {
+    useNativeDriver: true,
+  })
 
   const onPinchStateChange = (event) => {
     if (event.nativeEvent.oldState === State.ACTIVE) {
@@ -250,7 +257,7 @@ export function Profile({ isGuest = false, onExitGuest }) {
         },
       },
     ],
-    { useNativeDriver: true }
+    { useNativeDriver: true },
   )
 
   const onPanStateChange = (event) => {
@@ -272,7 +279,9 @@ export function Profile({ isGuest = false, onExitGuest }) {
       const cacheDir = FileSystemLegacy.cacheDirectory + 'avatars/'
       const dirInfo = await FileSystemLegacy.getInfoAsync(cacheDir)
       if (!dirInfo.exists) {
-        await FileSystemLegacy.makeDirectoryAsync(cacheDir, { intermediates: true })
+        await FileSystemLegacy.makeDirectoryAsync(cacheDir, {
+          intermediates: true,
+        })
       }
       const localUri = cacheDir + 'current_avatar.jpg'
       const { uri } = await FileSystemLegacy.downloadAsync(url, localUri)
@@ -314,7 +323,10 @@ export function Profile({ isGuest = false, onExitGuest }) {
       return publicUrl
     } catch (error) {
       console.error('Unexpected error uploading original avatar:', error)
-      Alert.alert('Error', 'Something went wrong while uploading your original photo.')
+      Alert.alert(
+        'Error',
+        'Something went wrong while uploading your original photo.',
+      )
       return null
     }
   }
@@ -331,9 +343,13 @@ export function Profile({ isGuest = false, onExitGuest }) {
           openCropEditor(localUri)
         }
       } else {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync()
         if (status !== 'granted') {
-          Alert.alert('Permission needed', 'We need access to your photos to set an avatar.')
+          Alert.alert(
+            'Permission needed',
+            'We need access to your photos to set an avatar.',
+          )
           setUploadingAvatar(false)
           return
         }
@@ -362,7 +378,10 @@ export function Profile({ isGuest = false, onExitGuest }) {
       }
     } catch (err) {
       console.error('Unexpected error preparing avatar for editing:', err)
-      Alert.alert('Error', 'Something went wrong while preparing your profile photo.')
+      Alert.alert(
+        'Error',
+        'Something went wrong while preparing your profile photo.',
+      )
     } finally {
       setUploadingAvatar(false)
     }
@@ -381,9 +400,7 @@ export function Profile({ isGuest = false, onExitGuest }) {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, email, display_name, avatar_url')
-        .or(
-          `email.ilike.%${query}%,display_name.ilike.%${query}%`
-        )
+        .or(`email.ilike.%${query}%,display_name.ilike.%${query}%`)
 
       if (error) {
         console.error('Friend search error:', error)
@@ -406,7 +423,10 @@ export function Profile({ isGuest = false, onExitGuest }) {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'We need access to your photos to set an avatar.')
+        Alert.alert(
+          'Permission needed',
+          'We need access to your photos to set an avatar.',
+        )
         return
       }
 
@@ -436,7 +456,7 @@ export function Profile({ isGuest = false, onExitGuest }) {
         (error) => {
           console.error('Failed to get image size for crop editor:', error)
           setCropImageSize(null)
-        }
+        },
       )
       uploadOriginalFromUri(asset.uri)
     } catch (error) {
@@ -469,7 +489,7 @@ export function Profile({ isGuest = false, onExitGuest }) {
             (error) => {
               console.error('Failed to get image size during crop:', error)
               reject(error)
-            }
+            },
           )
         })
       }
@@ -484,19 +504,29 @@ export function Profile({ isGuest = false, onExitGuest }) {
       const centerY = height / 2 + panYInImage
       const originX = Math.max(0, centerX - cropSizeInImage / 2)
       const originY = Math.max(0, centerY - cropSizeInImage / 2)
-      const cropSize = Math.max(1, Math.min(cropSizeInImage, width - originX, height - originY))
+      const cropSize = Math.max(
+        1,
+        Math.min(cropSizeInImage, width - originX, height - originY),
+      )
 
       const result = await ImageManipulator.manipulateAsync(
         cropImageUri,
         [
-          { crop: { originX, originY, width: Math.round(cropSize), height: Math.round(cropSize) } },
+          {
+            crop: {
+              originX,
+              originY,
+              width: Math.round(cropSize),
+              height: Math.round(cropSize),
+            },
+          },
           { resize: { width: 400, height: 400 } },
         ],
         {
           compress: 0.8,
           format: ImageManipulator.SaveFormat.JPEG,
           base64: true,
-        }
+        },
       )
 
       if (!result.base64) {
@@ -550,11 +580,16 @@ export function Profile({ isGuest = false, onExitGuest }) {
       <View style={styles.friendRow}>
         <View style={styles.friendAvatarWrapper}>
           {item.avatar_url ? (
-            <Image source={{ uri: item.avatar_url }} style={styles.friendAvatar} />
+            <Image
+              source={{ uri: item.avatar_url }}
+              style={styles.friendAvatar}
+            />
           ) : (
             <View style={styles.friendAvatarPlaceholder}>
               <Text style={styles.friendAvatarInitial}>
-                {(item.display_name || item.email || '?').charAt(0).toUpperCase()}
+                {(item.display_name || item.email || '?')
+                  .charAt(0)
+                  .toUpperCase()}
               </Text>
             </View>
           )}
@@ -567,7 +602,9 @@ export function Profile({ isGuest = false, onExitGuest }) {
         </View>
         <TouchableOpacity
           style={styles.addFriendButton}
-          onPress={() => Alert.alert('Coming soon', 'Friend requests are coming soon!')}
+          onPress={() =>
+            Alert.alert('Coming soon', 'Friend requests are coming soon!')
+          }
         >
           <Text style={styles.addFriendButtonText}>Add Friend</Text>
         </TouchableOpacity>
@@ -582,7 +619,8 @@ export function Profile({ isGuest = false, onExitGuest }) {
         <View style={styles.guestContent}>
           <Text style={styles.guestHeading}>Guest Mode</Text>
           <Text style={styles.guestMessage}>
-            Create an account to save your closet, upload photos, join groups, and share items with friends.
+            Create an account to save your closet, upload photos, join groups,
+            and share items with friends.
           </Text>
           <Button
             onPress={() => onExitGuest?.('signup')}
@@ -633,7 +671,12 @@ export function Profile({ isGuest = false, onExitGuest }) {
               />
             ) : null}
           </View>
-          <Text style={[styles.settingsRowLabel, destructive && styles.settingsRowDestructive]}>
+          <Text
+            style={[
+              styles.settingsRowLabel,
+              destructive && styles.settingsRowDestructive,
+            ]}
+          >
             {label}
           </Text>
         </View>
@@ -656,7 +699,12 @@ export function Profile({ isGuest = false, onExitGuest }) {
   )
 
   const renderSettingsHeader = () => (
-    <View style={[styles.settingsModalHeader, { paddingTop: insets.top + spacing.sm }]}>
+    <View
+      style={[
+        styles.settingsModalHeader,
+        { paddingTop: insets.top + spacing.sm },
+      ]}
+    >
       <TouchableOpacity
         onPress={() => setSettingsOpen(false)}
         style={styles.settingsBackBtn}
@@ -711,7 +759,9 @@ export function Profile({ isGuest = false, onExitGuest }) {
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarInitial}>
-                      {(displayName || userEmail || '?').charAt(0).toUpperCase()}
+                      {(displayName || userEmail || '?')
+                        .charAt(0)
+                        .toUpperCase()}
                     </Text>
                   </View>
                 )}
@@ -808,7 +858,9 @@ export function Profile({ isGuest = false, onExitGuest }) {
                 </Button>
               </View>
 
-              {friendResults.length === 0 && friendQuery.trim().length > 0 && !searchingFriends ? (
+              {friendResults.length === 0 &&
+              friendQuery.trim().length > 0 &&
+              !searchingFriends ? (
                 <Text style={styles.emptyResultsText}>No results found.</Text>
               ) : null}
 
@@ -832,8 +884,15 @@ export function Profile({ isGuest = false, onExitGuest }) {
         <View style={[styles.modalScreen, styles.settingsContainer]}>
           {renderSettingsHeader()}
 
-          <KeyboardAwareScrollView contentContainerStyle={styles.settingsContentContainer}>
-            <Text style={[styles.settingsSectionHeader, styles.settingsSectionHeaderFirst]}>
+          <KeyboardAwareScrollView
+            contentContainerStyle={styles.settingsContentContainer}
+          >
+            <Text
+              style={[
+                styles.settingsSectionHeader,
+                styles.settingsSectionHeaderFirst,
+              ]}
+            >
               Social
             </Text>
             <View style={styles.settingsCard}>
@@ -854,7 +913,10 @@ export function Profile({ isGuest = false, onExitGuest }) {
                 icon: 'bell',
                 label: 'Notifications',
                 onPress: () =>
-                  Alert.alert('Coming soon', 'Notification preferences are on the way.'),
+                  Alert.alert(
+                    'Coming soon',
+                    'Notification preferences are on the way.',
+                  ),
                 isLast: false,
               })}
               {renderSettingsRow({
@@ -893,7 +955,10 @@ export function Profile({ isGuest = false, onExitGuest }) {
       >
         <SafeAreaView style={styles.cropModalContainer}>
           <View style={[styles.cropHeader, { paddingTop: insets.top + 8 }]}>
-            <TouchableOpacity onPress={closeCropEditor} style={styles.cropCloseButton}>
+            <TouchableOpacity
+              onPress={closeCropEditor}
+              style={styles.cropCloseButton}
+            >
               <Text style={styles.cropCloseButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -952,7 +1017,9 @@ export function Profile({ isGuest = false, onExitGuest }) {
               onPress={handleUploadNewPhotoInEditor}
               activeOpacity={0.8}
             >
-              <Text style={styles.cropSecondaryButtonText}>Upload New Photo</Text>
+              <Text style={styles.cropSecondaryButtonText}>
+                Upload New Photo
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.cropButton, styles.cropPrimaryButton]}
@@ -1456,4 +1523,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 })
-

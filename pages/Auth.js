@@ -16,7 +16,11 @@ import { Button } from '../components/ui/Button'
 import { colors, spacing, typography, radii } from '../lib/theme'
 
 // mode: 'landing' | 'login' | 'signup' | 'recovery'
-export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing' }) {
+export function Auth({
+  initialRecovery = false,
+  onGuest,
+  initialMode = 'landing',
+}) {
   const insets = useSafeAreaInsets()
 
   const [mode, setMode] = useState(initialRecovery ? 'recovery' : initialMode)
@@ -46,9 +50,10 @@ export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing'
     const hashIndex = url.indexOf('#')
     const queryIndex = url.indexOf('?')
     const hash = hashIndex >= 0 ? url.slice(hashIndex + 1) : ''
-    const query = queryIndex >= 0
-      ? url.slice(queryIndex + 1, hashIndex >= 0 ? hashIndex : undefined)
-      : ''
+    const query =
+      queryIndex >= 0
+        ? url.slice(queryIndex + 1, hashIndex >= 0 ? hashIndex : undefined)
+        : ''
     const all = [query, hash].filter(Boolean).join('&')
     if (!all) return {}
     return all.split('&').reduce((acc, part) => {
@@ -69,7 +74,9 @@ export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing'
       })
       if (setSessionError) {
         console.error('Failed to set recovery session:', setSessionError)
-        setError('That reset link is invalid or expired. Please request a new one.')
+        setError(
+          'That reset link is invalid or expired. Please request a new one.',
+        )
       }
     }
   }
@@ -78,12 +85,19 @@ export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing'
     let isMounted = true
 
     Linking.getInitialURL()
-      .then((url) => { if (!isMounted || !url) return; handleIncomingUrl(url) })
+      .then((url) => {
+        if (!isMounted || !url) return
+        handleIncomingUrl(url)
+      })
       .catch((e) => console.error('getInitialURL error:', e))
 
-    const sub = Linking.addEventListener('url', ({ url }) => handleIncomingUrl(url))
+    const sub = Linking.addEventListener('url', ({ url }) =>
+      handleIncomingUrl(url),
+    )
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setMode('recovery')
     })
 
@@ -97,9 +111,10 @@ export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing'
   const handleSubmit = async () => {
     setLoading(true)
     setError(null)
-    const { error } = mode === 'login'
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password })
+    const { error } =
+      mode === 'login'
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password })
     if (error) setError(error.message)
     setLoading(false)
   }
@@ -111,7 +126,9 @@ export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing'
     }
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    })
     if (error) {
       setError(error.message)
     } else {
@@ -152,19 +169,32 @@ export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing'
       <View style={styles.landingContainer}>
         <View style={[styles.landingHero, { paddingTop: insets.top + 32 }]}>
           <Text style={styles.wordmark}>Clueless Closet</Text>
-          <Text style={styles.headline}>{'Keep track of what\u2019s yours,\nwhat\u2019s borrowed, and what\u2019s next.'}</Text>
+          <Text style={styles.headline}>
+            {
+              'Keep track of what\u2019s yours,\nwhat\u2019s borrowed, and what\u2019s next.'
+            }
+          </Text>
         </View>
 
-        <View style={[styles.landingActions, { paddingBottom: Math.max(insets.bottom, 24) + 16 }]}>
+        <View
+          style={[
+            styles.landingActions,
+            { paddingBottom: Math.max(insets.bottom, 24) + 16 },
+          ]}
+        >
           <Button onPress={() => setMode('login')} style={styles.landingCta}>
             Log In
           </Button>
-          <Button variant="secondary" onPress={() => setMode('signup')} style={styles.landingCta}>
+          <Button
+            variant="secondary"
+            onPress={() => setMode('signup')}
+            style={styles.landingCta}
+          >
             Sign Up
           </Button>
           {onGuest && (
             <TouchableOpacity onPress={onGuest} style={styles.guestLink}>
-              <Text style={styles.guestText}>Continue as Guest  →</Text>
+              <Text style={styles.guestText}>Continue as Guest →</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -177,7 +207,10 @@ export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing'
     <View style={styles.formContainer}>
       {mode !== 'recovery' && (
         <TouchableOpacity
-          onPress={() => { setError(null); setMode('landing') }}
+          onPress={() => {
+            setError(null)
+            setMode('landing')
+          }}
           style={[styles.backButton, { top: insets.top + 16 }]}
         >
           <Text style={styles.backText}>← Back</Text>
@@ -185,7 +218,11 @@ export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing'
       )}
 
       <Text style={styles.formTitle}>
-        {mode === 'recovery' ? 'Reset password' : mode === 'login' ? 'Log in' : 'Sign up'}
+        {mode === 'recovery'
+          ? 'Reset password'
+          : mode === 'login'
+            ? 'Log in'
+            : 'Sign up'}
       </Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -233,7 +270,9 @@ export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing'
               onPress={handleForgotPassword}
               style={styles.forgotRow}
             >
-              <Text style={[styles.toggle, { textAlign: 'right' }]}>Forgot password?</Text>
+              <Text style={[styles.toggle, { textAlign: 'right' }]}>
+                Forgot password?
+              </Text>
             </TouchableOpacity>
           )}
         </>
@@ -244,7 +283,11 @@ export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing'
         loading={loading}
         style={styles.ctaButton}
       >
-        {mode === 'recovery' ? 'Update password' : mode === 'login' ? 'Log in' : 'Sign up'}
+        {mode === 'recovery'
+          ? 'Update password'
+          : mode === 'login'
+            ? 'Log in'
+            : 'Sign up'}
       </Button>
 
       {mode === 'recovery' ? (
@@ -259,9 +302,13 @@ export function Auth({ initialRecovery = false, onGuest, initialMode = 'landing'
           <Text style={styles.toggle}>Back to login</Text>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
+        <TouchableOpacity
+          onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}
+        >
           <Text style={styles.toggle}>
-            {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
+            {mode === 'login'
+              ? "Don't have an account? Sign up"
+              : 'Already have an account? Log in'}
           </Text>
         </TouchableOpacity>
       )}
