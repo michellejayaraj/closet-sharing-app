@@ -60,6 +60,23 @@ test('password recovery is preserved before the temporary session signs in', asy
   )
 })
 
+test('password reset success is visible inside the web form', async () => {
+  const authSource = await readFile('pages/Auth.js', 'utf8')
+
+  assert.match(
+    authSource,
+    /setSuccessMessage\(['"]Check your email for the reset link!['"]\)/,
+  )
+  assert.match(
+    authSource,
+    /\{successMessage \? \([\s\S]*styles\.successMessage/,
+  )
+  assert.doesNotMatch(
+    authSource,
+    /Alert\.alert\(['"]Success['"], ['"]Check your email for the reset link!['"]\)/,
+  )
+})
+
 test('Supabase configuration comes from validated public environment variables', async () => {
   const [supabaseSource, envExample] = await Promise.all([
     readFile('lib/supabase.js', 'utf8'),

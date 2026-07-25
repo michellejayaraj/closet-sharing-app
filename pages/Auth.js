@@ -29,6 +29,7 @@ export function Auth({
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
@@ -121,6 +122,7 @@ export function Auth({
   const handleSubmit = async () => {
     setLoading(true)
     setError(null)
+    setSuccessMessage(null)
     const { error } =
       mode === 'login'
         ? await supabase.auth.signInWithPassword({ email, password })
@@ -136,13 +138,14 @@ export function Auth({
     }
     setLoading(true)
     setError(null)
+    setSuccessMessage(null)
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
     })
     if (error) {
       setError(error.message)
     } else {
-      Alert.alert('Success', 'Check your email for the reset link!')
+      setSuccessMessage('Check your email for the reset link!')
     }
     setLoading(false)
   }
@@ -219,6 +222,7 @@ export function Auth({
         <TouchableOpacity
           onPress={() => {
             setError(null)
+            setSuccessMessage(null)
             setMode('landing')
           }}
           style={[styles.backButton, { top: insets.top + 16 }]}
@@ -236,6 +240,9 @@ export function Auth({
       </Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      {successMessage ? (
+        <Text style={styles.successMessage}>{successMessage}</Text>
+      ) : null}
 
       {mode === 'recovery' ? (
         <>
@@ -307,13 +314,18 @@ export function Auth({
             setNewPassword('')
             setConfirmPassword('')
             setError(null)
+            setSuccessMessage(null)
           }}
         >
           <Text style={styles.toggle}>Back to login</Text>
         </TouchableOpacity>
       ) : (
         <TouchableOpacity
-          onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}
+          onPress={() => {
+            setMode(mode === 'login' ? 'signup' : 'login')
+            setError(null)
+            setSuccessMessage(null)
+          }}
         >
           <Text style={styles.toggle}>
             {mode === 'login'
@@ -423,6 +435,16 @@ const styles = StyleSheet.create({
   },
   error: {
     color: '#ef4444',
+    marginBottom: spacing.md,
+    fontSize: typography.body.fontSize,
+  },
+  successMessage: {
+    color: colors.text,
+    backgroundColor: colors.popPale,
+    borderColor: colors.popSoft,
+    borderWidth: 1,
+    borderRadius: radii.sm,
+    padding: spacing.md,
     marginBottom: spacing.md,
     fontSize: typography.body.fontSize,
   },
