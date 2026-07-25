@@ -76,14 +76,13 @@ export function GroupDetail({ route }) {
         .map((row) => row.closet_item_id),
     )
 
-    const othersborrowedIds = new Set(
+    let othersBorrowedIds = new Set(
       (borrowRows || [])
         .filter((row) => row.borrower_id !== user.id)
         .map((row) => row.closet_item_id),
     )
 
     setBorrowedItemIds(myBorrowedIds)
-    setBorrowedByOthers(othersborrowedIds)
 
     const otherMembers = memberRows.filter((row) => row.user_id !== user.id)
     const membersWithItems = await Promise.all(
@@ -110,6 +109,28 @@ export function GroupDetail({ route }) {
       }),
     )
 
+    const visibleItemIds = membersWithItems.flatMap((member) =>
+      member.items.map((item) => item.id),
+    )
+
+    if (visibleItemIds.length > 0) {
+      const { data: unavailableRows, error: availabilityError } =
+        await supabase.rpc('get_unavailable_closet_item_ids', {
+          item_ids_input: visibleItemIds,
+        })
+
+      if (availabilityError) {
+        console.error('Failed to load item availability:', availabilityError)
+      } else {
+        othersBorrowedIds = new Set(
+          (unavailableRows || [])
+            .map((row) => row.closet_item_id)
+            .filter((itemId) => !myBorrowedIds.has(itemId)),
+        )
+      }
+    }
+
+    setBorrowedByOthers(othersBorrowedIds)
     setMembers(membersWithItems)
     if (membersWithItems.length > 0) {
       setSelectedMember(membersWithItems[0])

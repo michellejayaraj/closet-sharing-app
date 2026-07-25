@@ -12,6 +12,8 @@ const accessPath =
   'supabase/migrations/20260725201000_secure_application_access.sql'
 const storagePath =
   'supabase/migrations/20260725202000_reconcile_storage_access.sql'
+const availabilityPath =
+  'supabase/migrations/20260725203000_add_item_availability_lookup.sql'
 
 test('canonical migration defines every application table', async () => {
   const schema = await readFile(schemaPath, 'utf8')
@@ -85,6 +87,7 @@ test('migrations avoid destructive reset and drop statements', async () => {
     await readFile(reconciliationPath, 'utf8'),
     await readFile(accessPath, 'utf8'),
     await readFile(storagePath, 'utf8'),
+    await readFile(availabilityPath, 'utf8'),
   ].join('\n')
 
   assert.doesNotMatch(sql, /\bdrop\s+(table|schema|database)\b/i)
@@ -149,5 +152,21 @@ test('storage writes are authenticated and scoped to the user folder', async () 
   assert.match(
     storage,
     /\(storage\.foldername\(name\)\)\[1\] = auth\.uid\(\)::text/i,
+  )
+})
+
+test('item availability does not expose borrower identity', async () => {
+  const availability = await readFile(availabilityPath, 'utf8')
+
+  assert.match(
+    availability,
+    /function public\.get_unavailable_closet_item_ids\(/i,
+  )
+  assert.match(availability, /returns table \(closet_item_id uuid\)/i)
+  assert.match(availability, /active_borrow\.returned_at is null/i)
+  assert.match(availability, /to authenticated/i)
+  assert.doesNotMatch(
+    availability,
+    /returns table \([^)]*(borrower_id|owner_id|group_id)/i,
   )
 })
