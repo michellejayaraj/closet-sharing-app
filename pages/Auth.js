@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ export function Auth({
   initialRecovery = false,
   onGuest,
   initialMode = 'landing',
+  onRecoveryStart,
 }) {
   const insets = useSafeAreaInsets()
 
@@ -64,22 +65,31 @@ export function Auth({
     }, {})
   }
 
-  const handleIncomingUrl = async (url) => {
-    const params = extractParamsFromUrl(url)
-    if (params.type === 'recovery') setMode('recovery')
-    if (params.access_token && params.refresh_token) {
-      const { error: setSessionError } = await supabase.auth.setSession({
-        access_token: params.access_token,
-        refresh_token: params.refresh_token,
-      })
-      if (setSessionError) {
-        console.error('Failed to set recovery session:', setSessionError)
-        setError(
-          'That reset link is invalid or expired. Please request a new one.',
-        )
+  const handleIncomingUrl = useCallback(
+    async (url) => {
+      const params = extractParamsFromUrl(url)
+      const isRecovery = params.type === 'recovery'
+
+      if (isRecovery) {
+        setMode('recovery')
+        onRecoveryStart?.()
       }
-    }
-  }
+
+      if (params.access_token && params.refresh_token) {
+        const { error: setSessionError } = await supabase.auth.setSession({
+          access_token: params.access_token,
+          refresh_token: params.refresh_token,
+        })
+        if (setSessionError) {
+          console.error('Failed to set recovery session:', setSessionError)
+          setError(
+            'That reset link is invalid or expired. Please request a new one.',
+          )
+        }
+      }
+    },
+    [onRecoveryStart],
+  )
 
   useEffect(() => {
     let isMounted = true
@@ -106,7 +116,7 @@ export function Auth({
       sub?.remove?.()
       subscription?.unsubscribe?.()
     }
-  }, [])
+  }, [handleIncomingUrl])
 
   const handleSubmit = async () => {
     setLoading(true)
