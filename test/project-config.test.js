@@ -59,3 +59,19 @@ test('password recovery is preserved before the temporary session signs in', asy
     /if \(isRecovery\) \{[\s\S]*onRecoveryStart\?\.\(\)[\s\S]*\}[\s\S]*supabase\.auth\.setSession/,
   )
 })
+
+test('Supabase configuration comes from validated public environment variables', async () => {
+  const [supabaseSource, envExample] = await Promise.all([
+    readFile('lib/supabase.js', 'utf8'),
+    readFile('.env.example', 'utf8'),
+  ])
+
+  assert.match(supabaseSource, /process\.env\.EXPO_PUBLIC_SUPABASE_URL/)
+  assert.match(supabaseSource, /process\.env\.EXPO_PUBLIC_SUPABASE_ANON_KEY/)
+  assert.match(supabaseSource, /if \(!SUPABASE_URL \|\| !SUPABASE_ANON_KEY\)/)
+  assert.doesNotMatch(supabaseSource, /https:\/\/[a-z]+\.supabase\.co/)
+  assert.doesNotMatch(supabaseSource, /eyJ[A-Za-z0-9_-]+\./)
+
+  assert.match(envExample, /^EXPO_PUBLIC_SUPABASE_URL=/m)
+  assert.match(envExample, /^EXPO_PUBLIC_SUPABASE_ANON_KEY=/m)
+})

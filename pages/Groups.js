@@ -103,29 +103,14 @@ export function Groups() {
     setSaving(true)
     setError(null)
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    const { data: group, error: groupError } = await supabase
-      .from('groups')
-      .insert({ name: groupName.trim(), created_by: user.id })
-      .select()
-      .single()
+    const { data: group, error: groupError } = await supabase.rpc(
+      'create_group',
+      { group_name_input: groupName.trim() },
+    )
 
     if (groupError) {
       console.error('Create group error:', groupError)
       setError('Failed to create group.')
-      setSaving(false)
-      return
-    }
-
-    const { error: memberError } = await supabase
-      .from('group_members')
-      .insert({ group_id: group.id, user_id: user.id, role: 'owner' })
-
-    if (memberError) {
-      setError('Failed to join group.')
       setSaving(false)
       return
     }
@@ -144,28 +129,13 @@ export function Groups() {
     setSaving(true)
     setError(null)
 
-    const { data: group, error: groupError } = await supabase
-      .from('groups')
-      .select('*')
-      .eq('invite_code', inviteCode.trim().toUpperCase())
-      .single()
+    const { data: group, error: groupError } = await supabase.rpc(
+      'join_group_by_invite_code',
+      { invite_code_input: inviteCode.trim() },
+    )
 
     if (groupError || !group) {
       setError('Invalid invite code.')
-      setSaving(false)
-      return
-    }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    const { error: memberError } = await supabase
-      .from('group_members')
-      .insert({ group_id: group.id, user_id: user.id, role: 'member' })
-
-    if (memberError) {
-      setError('Could not join group. You may already be a member.')
       setSaving(false)
       return
     }
