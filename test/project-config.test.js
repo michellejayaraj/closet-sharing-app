@@ -42,3 +42,20 @@ test('the app entry point is registered with Expo', async () => {
 
   assert.match(entrySource, /registerRootComponent\(App\)/)
 })
+
+test('password recovery is preserved before the temporary session signs in', async () => {
+  const [entrySource, authSource] = await Promise.all([
+    readFile('index.js', 'utf8'),
+    readFile('pages/Auth.js', 'utf8'),
+  ])
+
+  assert.match(entrySource, /onRecoveryStart=\{handlePasswordRecovery\}/)
+  assert.doesNotMatch(
+    entrySource,
+    /event === ['"]USER_UPDATED['"][\s\S]*setPasswordRecovery\(false\)/,
+  )
+  assert.match(
+    authSource,
+    /if \(isRecovery\) \{[\s\S]*onRecoveryStart\?\.\(\)[\s\S]*\}[\s\S]*supabase\.auth\.setSession/,
+  )
+})

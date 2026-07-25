@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { colors } from './lib/theme'
 import { Layout } from './components/layout/Layout'
@@ -41,6 +41,10 @@ export default function App() {
     setIsGuest(false)
   }
 
+  const handlePasswordRecovery = useCallback(() => {
+    setPasswordRecovery(true)
+  }, [])
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -57,9 +61,6 @@ export default function App() {
         setPasswordRecovery(false)
         setIsGuest(false)
         setAuthInitialMode('landing')
-      }
-      if (event === 'USER_UPDATED') {
-        setPasswordRecovery(false)
       }
       setSession(session)
     })
@@ -110,6 +111,7 @@ export default function App() {
                   {() => (
                     <Auth
                       initialRecovery={passwordRecovery}
+                      onRecoveryStart={handlePasswordRecovery}
                       onGuest={() => setIsGuest(true)}
                       initialMode={authInitialMode}
                     />
