@@ -11,7 +11,6 @@ begin
   return new;
 end;
 $$;
-
 alter table public.profiles
   add column if not exists updated_at timestamptz;
 alter table public.closet_items
@@ -181,4 +180,3 @@ begin
   end if;
 end;
 $$;
-

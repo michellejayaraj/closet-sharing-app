@@ -289,4 +289,3 @@ with check (
   borrower_id = auth.uid()
   or owner_id = auth.uid()
 );
-

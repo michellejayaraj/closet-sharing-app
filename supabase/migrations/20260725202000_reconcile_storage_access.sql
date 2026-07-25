@@ -24,7 +24,6 @@ with check (
   bucket_id in ('avatars', 'closet-images')
   and (storage.foldername(name))[1] = auth.uid()::text
 );
-
 create policy users_update_own_application_images
 on storage.objects
 for update
@@ -46,4 +45,3 @@ using (
   bucket_id in ('avatars', 'closet-images')
   and (storage.foldername(name))[1] = auth.uid()::text
 );
-
