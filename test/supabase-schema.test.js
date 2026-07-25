@@ -14,6 +14,8 @@ const storagePath =
   'supabase/migrations/20260725202000_reconcile_storage_access.sql'
 const availabilityPath =
   'supabase/migrations/20260725203000_add_item_availability_lookup.sql'
+const storageBucketsPath =
+  'supabase/migrations/20260725204000_create_application_storage_buckets.sql'
 
 test('canonical migration defines every application table', async () => {
   const schema = await readFile(schemaPath, 'utf8')
@@ -88,6 +90,7 @@ test('migrations avoid destructive reset and drop statements', async () => {
     await readFile(accessPath, 'utf8'),
     await readFile(storagePath, 'utf8'),
     await readFile(availabilityPath, 'utf8'),
+    await readFile(storageBucketsPath, 'utf8'),
   ].join('\n')
 
   assert.doesNotMatch(sql, /\bdrop\s+(table|schema|database)\b/i)
@@ -153,6 +156,19 @@ test('storage writes are authenticated and scoped to the user folder', async () 
     storage,
     /\(storage\.foldername\(name\)\)\[1\] = auth\.uid\(\)::text/i,
   )
+})
+
+test('hosted storage creates the image buckets used by the client', async () => {
+  const storageBuckets = await readFile(storageBucketsPath, 'utf8')
+
+  assert.match(storageBuckets, /insert into storage\.buckets/i)
+  assert.match(storageBuckets, /'avatars'/i)
+  assert.match(storageBuckets, /'closet-images'/i)
+  assert.match(storageBuckets, /10485760/i)
+  assert.match(storageBuckets, /'image\/jpeg'/i)
+  assert.match(storageBuckets, /'image\/png'/i)
+  assert.match(storageBuckets, /'image\/webp'/i)
+  assert.match(storageBuckets, /on conflict \(id\) do update/i)
 })
 
 test('item availability does not expose borrower identity', async () => {
