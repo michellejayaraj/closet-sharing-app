@@ -1,7 +1,8 @@
 # Supabase schema inventory
 
-This inventory was derived from the application source on July 23, 2026. The
-hosted database was not accessed.
+This inventory was derived from the application source and a read-only hosted
+database catalog audit completed on July 25, 2026. No application rows were
+selected during the audit.
 
 ## Tables
 
@@ -46,18 +47,40 @@ These relationships support nested selections such as
 | `avatars`       | `<user-id>/avatar.jpg` and `<user-id>/avatar_original.jpg` | Public URL           |
 | `closet-images` | `<user-id>/<timestamp>.<extension>`                        | Public URL           |
 
-The local configuration preserves public buckets for compatibility. Phase 3
-must add path-scoped upload/update/delete policies. A later image-lifecycle
+The local configuration preserves public buckets for compatibility. The
+reconciliation migrations replace duplicate hosted policies with authenticated,
+user-folder-scoped upload, update, and delete policies. A later image-lifecycle
 phase should evaluate private buckets and signed URLs.
+
+## Hosted schema differences observed
+
+- `profiles`, `closet_items`, and `groups` were missing `updated_at`.
+- Several relationship, timestamp, and state columns were nullable even though
+  every hosted row contained a value.
+- `closet_items.name` and `closet_items.image_url` had the literal default
+  `NOT NULL`; the reconciliation removes that accidental image default and
+  restores a safe empty-name default.
+- Hosted `group_members` uses a surrogate `id` primary key plus a unique
+  `(group_id, user_id)` constraint. The fresh baseline uses the natural
+  composite primary key. The additive reconciliation leaves the hosted `id`
+  intact to avoid a destructive rewrite.
+- The hosted database already has a partial unique active-borrow index under
+  the name `one_active_borrow_per_item`.
+- `profiles` had RLS disabled. Other application tables had a mix of overly
+  broad and incomplete policies.
+- Group invite codes were visible through a policy permitting every group row
+  to be selected. Invite redemption is now designed as an atomic RPC so that
+  policy is no longer required.
 
 ## Known schema-level limitations
 
 - The client writes `closet_items.borrowed`, but borrowing and returning do not
   update it. `borrowed_items` is therefore the reliable borrowing history.
-- Group creation and owner membership are separate client requests.
-- Borrow validation is client-side before insert.
-- The schema cannot guarantee that owner and borrower are members of the
-  referenced group without a trigger or transactional RPC.
+- Group creation and owner membership use one transactional RPC.
+- Invite redemption and membership creation use one transactional RPC.
+- Borrow policies verify the borrower, owner, item ownership, and shared group
+  membership before insert.
 - Profile email is duplicated from `auth.users` for client-side friend search.
-- The live database may already use different types, constraints, policies, or
-  triggers. It must be pulled and reconciled before production adoption.
+- All signed-in users can currently read profile emails because friend search
+  depends on them. A later privacy phase should replace this with a narrow
+  search RPC.

@@ -7,29 +7,22 @@ created without connecting to or inspecting the hosted Supabase project.
 
 The initial migration is a canonical schema for a **fresh local or staging
 database**. It intentionally fails when the application tables already exist.
-Do not run `supabase db push` against the hosted project yet.
+The additive reconciliation migrations were prepared from a read-only hosted
+catalog audit, but have not been applied remotely. Do not run `supabase db push`
+against the hosted project yet.
 
 Before adopting these migrations for an existing project:
 
 1. Back up the hosted database and confirm restore procedures.
 2. Check the hosted PostgreSQL major version with `show server_version;` and
    update `db.major_version` in `config.toml` if it differs.
-3. Link the CLI only when remote read access is approved.
-4. Pull the existing schema into a separate comparison branch:
-
-   ```bash
-   npx supabase link --project-ref <project-ref>
-   npx supabase db pull
-   npx supabase db pull --schema auth
-   npx supabase db pull --schema storage
-   ```
-
-5. Compare table types, foreign keys, triggers, constraints, indexes, RLS
-   policies, and grants with the canonical migration.
-6. Replace the canonical migration with an additive adoption migration for the
-   actual hosted schema.
-7. Test the complete chain against a disposable local database and staging.
-8. Review the SQL before requesting separate approval for production.
+3. Review the July 25 hosted-schema inventory and every reconciliation
+   migration.
+4. Back up the hosted project before changing migration history.
+5. Adopt the two baseline migrations in migration history without executing
+   their fresh-database `CREATE TABLE` statements.
+6. Test the additive migrations against a separate staging project.
+7. Request separate approval before applying anything to production.
 
 Some CLI commands default to the linked remote project. Always pass `--local`
 or `--linked` explicitly and verify the target before executing a database
@@ -56,6 +49,17 @@ migrations and `seed.sql`.
   enablement.
 - `20260723221000_add_application_indexes.sql` defines indexes for current
   client queries and prevents concurrent active borrows of the same item.
+- `20260725200000_reconcile_hosted_schema.sql` adds missing timestamps,
+  backfills safe defaults, tightens columns confirmed to contain no nulls, and
+  adds missing query indexes.
+- `20260725201000_secure_application_access.sql` replaces legacy policies,
+  restricts grants, validates borrowing, and adds atomic group creation and
+  invite redemption functions.
+- `20260725202000_reconcile_storage_access.sql` consolidates storage policies
+  and scopes all writes to the authenticated user's folder.
 
-Phase 3 must add and test RLS and Storage policies before the fresh local schema
-is usable through an authenticated client.
+The hosted catalog audit used aggregate counts only. Across 4 profiles, 14
+closet items, 3 groups, 5 memberships, and 7 borrow records, none of the fields
+tightened by the reconciliation contained null values. The audit also found no
+invalid group names, invalid membership roles, multiple-owner groups,
+self-borrows, or return timestamps earlier than their borrow timestamps.
