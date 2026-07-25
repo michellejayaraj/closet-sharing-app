@@ -48,12 +48,31 @@ A React (Expo/React Native) app for a platform where users can add clothing item
 
 **Prerequisites:** Node.js and npm
 
-1. Configure Supabase: create project, add tables and RLS policies, storage buckets (avatars, closet-images)
-2. Update `lib/supabase.js` with your Supabase URL and anon key if needed
+1. Copy the environment template:
+
+```bash
+cp .env.example .env.local
+```
+
+2. Put the target Supabase project URL and public anon/publishable key in
+   `.env.local`.
+3. Configure that Supabase project with the migrations and storage buckets.
 
 ```bash
 npm ci
 npm start
+```
+
+Expo embeds variables prefixed with `EXPO_PUBLIC_` in the client bundle. The
+Supabase anon/publishable key is designed for client use; authorization still
+depends on correct database and storage policies. Never put a service-role key
+in an `EXPO_PUBLIC_` variable.
+
+To switch between production and staging, stop Expo, replace the two values in
+the ignored `.env.local` file, then restart with a cleared cache:
+
+```bash
+npx expo start --clear
 ```
 
 Then choose iOS, Android, or Web in the terminal, or run:
