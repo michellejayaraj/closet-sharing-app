@@ -1,5 +1,7 @@
 .expo/
 dist/
 node_modules/
+supabase/.branches/
+supabase/.temp/
 web-build/
 package-lock.json
