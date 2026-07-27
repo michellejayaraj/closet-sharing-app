@@ -92,8 +92,8 @@ npm run verify
 ```
 
 The combined verification command checks Expo dependency compatibility, runs
-ESLint, verifies formatting, executes smoke tests, and creates a production web
-export in `dist/`.
+ESLint, verifies formatting, executes smoke tests, verifies the migration
+manifest, and creates a cache-cleared web export in `dist/`.
 
 Checks can also be run separately:
 
@@ -101,5 +101,12 @@ Checks can also be run separately:
 - `npm run lint` — lint JavaScript source and configuration
 - `npm run format:check` — check formatting without changing files
 - `npm test` — run the Node-based smoke tests
-- `npm run build:web` — create the production web export
+- `npm run build:web` — create a cache-cleared web export for the current env
+- `npm run build:web:staging` — require and verify staging credentials
+- `npm run build:web:production` — require and verify production credentials
+- `npm run deploy:web:production` — verify, build, and deploy production
+- `npm run verify:migrations` — compare migrations with the hosted manifest
 - `npm run format` — apply the repository's formatting rules
+
+See `docs/operations-runbook.md` for deployment, migration-history, rollback,
+database-recovery, and incident procedures.
