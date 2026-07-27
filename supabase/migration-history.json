@@ -1,0 +1,19 @@
+{
+  "versions": [
+    "20260723220000",
+    "20260723221000",
+    "20260725200000",
+    "20260725201000",
+    "20260725202000",
+    "20260725203000",
+    "20260725204000"
+  ],
+  "production": {
+    "projectRef": "wdbrmpsvgintnpvezkrv",
+    "status": "manually applied and verified"
+  },
+  "staging": {
+    "projectRef": "oibkeihghkjqnersiwhk",
+    "status": "manually applied and verified"
+  }
+}

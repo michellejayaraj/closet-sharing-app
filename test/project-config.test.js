@@ -8,11 +8,16 @@ test('package scripts expose the Phase 1 verification commands', async () => {
   const packageJson = await readJson('package.json')
   const expectedScripts = [
     'build:web',
+    'build:web:ci',
+    'build:web:production',
+    'deploy:web:production',
     'doctor',
     'format:check',
     'lint',
     'test',
     'verify',
+    'verify:ci',
+    'verify:migrations',
   ]
 
   for (const script of expectedScripts) {
@@ -22,6 +27,37 @@ test('package scripts expose the Phase 1 verification commands', async () => {
       `missing npm script: ${script}`,
     )
   }
+})
+
+test('CI verifies pull requests without write permissions', async () => {
+  const workflow = await readFile('.github/workflows/verify.yml', 'utf8')
+
+  assert.match(workflow, /pull_request:/)
+  assert.match(workflow, /contents: read/)
+  assert.match(workflow, /npm ci/)
+  assert.match(workflow, /npm run verify:ci/)
+  assert.doesNotMatch(workflow, /contents: write/)
+})
+
+test('production web builds are cache-cleared and target-checked', async () => {
+  const [packageJson, buildScript, environments] = await Promise.all([
+    readJson('package.json'),
+    readFile('scripts/build-web.mjs', 'utf8'),
+    readJson('config/environments.json'),
+  ])
+
+  assert.match(packageJson.scripts['build:web'], /--clear/)
+  assert.match(
+    packageJson.scripts['deploy:web:production'],
+    /build-web\.mjs production --deploy/,
+  )
+  assert.match(buildScript, /Refusing \$\{target\} build/)
+  assert.match(buildScript, /sb_secret_/)
+  assert.match(buildScript, /payload\.role !== ['"]anon['"]/)
+  assert.match(buildScript, /\.supabase\.co/)
+  assert.match(buildScript, /unexpectedly contains the \$\{name\} project/)
+  assert.equal(environments.production.supabaseProjectRef.length, 20)
+  assert.equal(environments.staging.supabaseProjectRef.length, 20)
 })
 
 test('Expo configuration references repository assets', async () => {

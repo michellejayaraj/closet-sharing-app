@@ -7,9 +7,9 @@ created without connecting to or inspecting the hosted Supabase project.
 
 The initial migration is a canonical schema for a **fresh local or staging
 database**. It intentionally fails when the application tables already exist.
-The additive reconciliation migrations were prepared from a read-only hosted
-catalog audit, but have not been applied remotely. Do not run `supabase db push`
-against the hosted project yet.
+All seven migrations have been applied and verified manually in staging and
+production. Their CLI migration-history rows have not been reconciled yet, so
+do not run `supabase db push` against either hosted project.
 
 Before adopting these migrations for an existing project:
 
@@ -19,10 +19,8 @@ Before adopting these migrations for an existing project:
 3. Review the July 25 hosted-schema inventory and every reconciliation
    migration.
 4. Back up the hosted project before changing migration history.
-5. Adopt the two baseline migrations in migration history without executing
-   their fresh-database `CREATE TABLE` statements.
-6. Test the additive migrations against a separate staging project.
-7. Request separate approval before applying anything to production.
+5. Follow `docs/operations-runbook.md` to reconcile migration history without
+   executing the SQL again.
 
 Some CLI commands default to the linked remote project. Always pass `--local`
 or `--linked` explicitly and verify the target before executing a database
@@ -57,6 +55,10 @@ migrations and `seed.sql`.
   invite redemption functions.
 - `20260725202000_reconcile_storage_access.sql` consolidates storage policies
   and scopes all writes to the authenticated user's folder.
+- `20260725203000_add_item_availability_lookup.sql` exposes availability
+  without revealing borrower identity.
+- `20260725204000_create_application_storage_buckets.sql` aligns hosted image
+  buckets with the local configuration.
 
 The hosted catalog audit used aggregate counts only. Across 4 profiles, 14
 closet items, 3 groups, 5 memberships, and 7 borrow records, none of the fields

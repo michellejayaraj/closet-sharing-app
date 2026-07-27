@@ -1,0 +1,10 @@
+{
+  "production": {
+    "supabaseProjectRef": "wdbrmpsvgintnpvezkrv",
+    "supabaseUrl": "https://wdbrmpsvgintnpvezkrv.supabase.co"
+  },
+  "staging": {
+    "supabaseProjectRef": "oibkeihghkjqnersiwhk",
+    "supabaseUrl": "https://oibkeihghkjqnersiwhk.supabase.co"
+  }
+}
