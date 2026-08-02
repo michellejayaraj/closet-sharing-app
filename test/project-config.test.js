@@ -156,6 +156,17 @@ test('new closet photos are resized, compressed, and cached', async () => {
   assert.doesNotMatch(uploadSource, /base64:\s*true[^]*launchImageLibraryAsync/)
 })
 
+test('item deletion uses a web confirmation before deleting', async () => {
+  const detailSource = await readFile(
+    'components/modals/ItemDetailModal.js',
+    'utf8',
+  )
+
+  assert.match(detailSource, /Platform\.OS === ['"]web['"]/)
+  assert.match(detailSource, /globalThis\.confirm/)
+  assert.match(detailSource, /if \(confirmed\) onDelete\(item\.id\)/)
+})
+
 test('large closet and borrowing lists load in bounded pages', async () => {
   const [closetSource, borrowedSource] = await Promise.all([
     readFile('hooks/useCloset.js', 'utf8'),

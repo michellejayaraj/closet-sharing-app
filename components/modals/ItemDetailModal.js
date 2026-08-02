@@ -8,6 +8,7 @@ import {
   Pressable,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native'
 import { typography } from '../../lib/theme'
 
@@ -50,6 +51,15 @@ export function ItemDetailModal({
 
   const handleDelete = () => {
     if (!onDelete) return
+
+    if (Platform.OS === 'web') {
+      const confirmed = globalThis.confirm(
+        'Delete this item? This will permanently remove it from your closet.',
+      )
+      if (confirmed) onDelete(item.id)
+      return
+    }
+
     Alert.alert(
       'Delete item?',
       'This will permanently remove the item from your closet.',
