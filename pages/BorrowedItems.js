@@ -14,6 +14,7 @@ import Feather from '@expo/vector-icons/Feather'
 import { supabase } from '../lib/supabase'
 import { getSessionUser } from '../lib/session'
 import { measureAsync } from '../lib/performance'
+import { appendUniquePage, hasNextPage } from '../lib/pagination.cjs'
 import { useNavigation } from '@react-navigation/native'
 import { Button } from '../components/ui/Button'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
@@ -100,8 +101,10 @@ export function BorrowedItems() {
         }
       })
 
-      setBorrowedItems((previous) => (append ? [...previous, ...items] : items))
-      setHasMore((data || []).length === BORROWED_PAGE_SIZE)
+      setBorrowedItems((previous) =>
+        append ? appendUniquePage(previous, items) : items,
+      )
+      setHasMore(hasNextPage(data || [], BORROWED_PAGE_SIZE))
     } finally {
       setLoading(false)
       setLoadingMore(false)

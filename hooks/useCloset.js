@@ -8,6 +8,7 @@ import {
 import { supabase } from '../lib/supabase'
 import { getSessionUser } from '../lib/session'
 import { measureAsync } from '../lib/performance'
+import { appendUniquePage, hasNextPage } from '../lib/pagination.cjs'
 
 const ClosetContext = createContext(null)
 const CLOSET_PAGE_SIZE = 24
@@ -47,7 +48,7 @@ export function ClosetProvider({ children }) {
           borrowed: item.borrowed,
         })),
       )
-      setHasMore(data.length === CLOSET_PAGE_SIZE)
+      setHasMore(hasNextPage(data, CLOSET_PAGE_SIZE))
     }
     setLoading(false)
   }, [])
@@ -75,16 +76,14 @@ export function ClosetProvider({ children }) {
         return
       }
 
-      setMyCloset((previous) => [
-        ...previous,
-        ...(data || []).map((item) => ({
-          id: item.id,
-          name: item.name,
-          imageUrl: item.image_url,
-          borrowed: item.borrowed,
-        })),
-      ])
-      setHasMore((data || []).length === CLOSET_PAGE_SIZE)
+      const nextPage = (data || []).map((item) => ({
+        id: item.id,
+        name: item.name,
+        imageUrl: item.image_url,
+        borrowed: item.borrowed,
+      }))
+      setMyCloset((previous) => appendUniquePage(previous, nextPage))
+      setHasMore(hasNextPage(data || [], CLOSET_PAGE_SIZE))
     } finally {
       setLoadingMore(false)
     }
