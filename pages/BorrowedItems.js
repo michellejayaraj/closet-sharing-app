@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   View,
   Text,
@@ -12,46 +12,56 @@ import {
 } from 'react-native'
 import Feather from '@expo/vector-icons/Feather'
 import { supabase } from '../lib/supabase'
+import { getSessionUser } from '../lib/session'
+import { measureAsync } from '../lib/performance'
 import { useNavigation } from '@react-navigation/native'
 import { Button } from '../components/ui/Button'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
 import { colors, spacing, radii, typography } from '../lib/theme'
 
+const BORROWED_PAGE_SIZE = 20
+
 export function BorrowedItems() {
   const navigation = useNavigation()
   const [borrowedItems, setBorrowedItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  const loadBorrowedItems = async () => {
+  const loadBorrowedPage = useCallback(async (offset = 0, append = false) => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const user = await getSessionUser()
       if (!user) {
         setBorrowedItems([])
+        setHasMore(false)
         setLoading(false)
         return
       }
 
-      const { data, error } = await supabase
-        .from('borrowed_items')
-        .select(
-          `
+      const { data, error } = await measureAsync(
+        append ? 'borrowed-items.load.more' : 'borrowed-items.load.initial',
+        () =>
+          supabase
+            .from('borrowed_items')
+            .select(
+              `
           id,
           borrowed_at,
           owner_id,
           closet_items (id, name, image_url)
         `,
-        )
-        .eq('borrower_id', user.id)
-        .is('returned_at', null)
-        .order('borrowed_at', { ascending: false })
+            )
+            .eq('borrower_id', user.id)
+            .is('returned_at', null)
+            .order('borrowed_at', { ascending: false })
+            .range(offset, offset + BORROWED_PAGE_SIZE - 1),
+      )
 
       if (error) {
         console.error('Failed to load borrowed items:', error)
         Alert.alert('Error', 'Could not load your borrowed items.')
-        setBorrowedItems([])
+        if (!append) setBorrowedItems([])
         return
       }
 
@@ -90,15 +100,17 @@ export function BorrowedItems() {
         }
       })
 
-      setBorrowedItems(items)
+      setBorrowedItems((previous) => (append ? [...previous, ...items] : items))
+      setHasMore((data || []).length === BORROWED_PAGE_SIZE)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    loadBorrowedItems()
-  }, [])
+    loadBorrowedPage()
+  }, [loadBorrowedPage])
 
   const handleReturn = async (borrowedItemId) => {
     const { error } = await supabase
@@ -118,10 +130,16 @@ export function BorrowedItems() {
   const onRefresh = async () => {
     setRefreshing(true)
     try {
-      await loadBorrowedItems()
+      await loadBorrowedPage()
     } finally {
       setRefreshing(false)
     }
+  }
+
+  const loadMore = async () => {
+    if (!hasMore || loading || loadingMore) return
+    setLoadingMore(true)
+    await loadBorrowedPage(borrowedItems.length, true)
   }
 
   const renderItem = ({ item }) => {
@@ -194,6 +212,17 @@ export function BorrowedItems() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator
+                size="small"
+                color={colors.text}
+                style={styles.listFooter}
+              />
+            ) : null
+          }
         />
       )}
     </View>
@@ -245,6 +274,9 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.lg,
+  },
+  listFooter: {
+    marginVertical: spacing.md,
   },
   card: {
     backgroundColor: colors.surface,

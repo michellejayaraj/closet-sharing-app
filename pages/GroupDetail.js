@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
 } from 'react-native'
 import Feather from '@expo/vector-icons/Feather'
 import { supabase } from '../lib/supabase'
+import { getSessionUser } from '../lib/session'
+import { measureAsync } from '../lib/performance'
 import { ItemDetailModal } from '../components/modals/ItemDetailModal'
 import { ItemCard } from '../components/closet/ItemCard'
 import { Button } from '../components/ui/Button'
@@ -36,24 +38,24 @@ export function GroupDetail({ route }) {
   const [editGroupName, setEditGroupName] = useState('')
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    loadMembers()
-  }, [])
-
-  const loadMembers = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+  const loadMembers = useCallback(async () => {
+    const user = await getSessionUser()
     if (!user) {
       setLoading(false)
       return
     }
     setCurrentUserId(user.id)
 
-    const { data: memberRows, error: memberError } = await supabase
-      .from('group_members')
-      .select('user_id, role, profiles(id, email, display_name, avatar_url)')
-      .eq('group_id', group.id)
+    const { data: memberRows, error: memberError } = await measureAsync(
+      'group-detail.members.load',
+      () =>
+        supabase
+          .from('group_members')
+          .select(
+            'user_id, role, profiles(id, email, display_name, avatar_url)',
+          )
+          .eq('group_id', group.id),
+    )
 
     if (memberError) {
       console.error('Failed to load members:', memberError)
@@ -85,29 +87,42 @@ export function GroupDetail({ route }) {
     setBorrowedItemIds(myBorrowedIds)
 
     const otherMembers = memberRows.filter((row) => row.user_id !== user.id)
-    const membersWithItems = await Promise.all(
-      otherMembers.map(async (row) => {
-        const { data: items } = await supabase
-          .from('closet_items')
-          .select('*')
-          .eq('user_id', row.user_id)
+    const otherMemberIds = otherMembers.map((row) => row.user_id)
+    let closetItems = []
 
-        const mappedItems = (items || []).map((item) => ({
-          id: item.id,
-          name: item.name,
-          imageUrl: item.image_url,
-        }))
+    if (otherMemberIds.length > 0) {
+      const { data: items, error: itemsError } = await supabase
+        .from('closet_items')
+        .select('id, user_id, name, image_url')
+        .in('user_id', otherMemberIds)
+        .order('created_at', { ascending: false })
 
-        return {
-          userId: row.user_id,
-          role: row.role,
-          email: row.profiles?.email,
-          displayName: row.profiles?.display_name,
-          avatarUrl: row.profiles?.avatar_url,
-          items: mappedItems,
-        }
-      }),
-    )
+      if (itemsError) {
+        console.error('Failed to load group closet items:', itemsError)
+      } else {
+        closetItems = items || []
+      }
+    }
+
+    const itemsByOwner = new Map()
+    closetItems.forEach((item) => {
+      const ownerItems = itemsByOwner.get(item.user_id) || []
+      ownerItems.push({
+        id: item.id,
+        name: item.name,
+        imageUrl: item.image_url,
+      })
+      itemsByOwner.set(item.user_id, ownerItems)
+    })
+
+    const membersWithItems = otherMembers.map((row) => ({
+      userId: row.user_id,
+      role: row.role,
+      email: row.profiles?.email,
+      displayName: row.profiles?.display_name,
+      avatarUrl: row.profiles?.avatar_url,
+      items: itemsByOwner.get(row.user_id) || [],
+    }))
 
     const visibleItemIds = membersWithItems.flatMap((member) =>
       member.items.map((item) => item.id),
@@ -136,7 +151,11 @@ export function GroupDetail({ route }) {
       setSelectedMember(membersWithItems[0])
     }
     setLoading(false)
-  }
+  }, [group.id])
+
+  useEffect(() => {
+    loadMembers()
+  }, [loadMembers])
 
   const getLabel = (member) => {
     return member.displayName || member.email?.split('@')[0] || 'Member'

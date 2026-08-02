@@ -26,6 +26,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { decode } from 'base64-arraybuffer'
 import Feather from '@expo/vector-icons/Feather'
 import { supabase } from '../lib/supabase'
+import { getSessionUser } from '../lib/session'
 import { Button } from '../components/ui/Button'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
 import { colors, spacing, radii, typography } from '../lib/theme'
@@ -127,13 +128,9 @@ export function Profile({ isGuest = false, onExitGuest }) {
   const loadProfile = async () => {
     try {
       setLoadingProfile(true)
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
+      const user = await getSessionUser()
 
-      if (userError || !user) {
-        console.error('Failed to get user:', userError)
+      if (!user) {
         Alert.alert('Error', 'Could not load your profile.')
         setLoadingProfile(false)
         return

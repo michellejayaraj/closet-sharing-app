@@ -13,9 +13,16 @@ import {
   ActivityIndicator,
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import * as ImageManipulator from 'expo-image-manipulator'
 import { decode } from 'base64-arraybuffer'
 import { supabase } from '../../lib/supabase'
+import { getSessionUser } from '../../lib/session'
+import { measureAsync } from '../../lib/performance'
 import { typography } from '../../lib/theme'
+
+const MAX_IMAGE_DIMENSION = 1200
+const JPEG_QUALITY = 0.72
+const IMMUTABLE_CACHE_SECONDS = '31536000'
 
 export function AddItemModal({ isOpen, onClose, onAdd }) {
   const [imageUrl, setImageUrl] = useState('')
@@ -52,10 +59,9 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
     }
 
     const result = fromCamera
-      ? await ImagePicker.launchCameraAsync({ quality: 0.7, base64: true })
+      ? await ImagePicker.launchCameraAsync({ quality: 0.85 })
       : await ImagePicker.launchImageLibraryAsync({
-          quality: 0.7,
-          base64: true,
+          quality: 0.85,
         })
 
     if (result.canceled) return
@@ -67,27 +73,43 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
   const uploadImage = async (asset) => {
     setUploading(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      const uri = asset.uri
-      const base64 = asset.base64
+      const user = await getSessionUser()
+      if (!user) throw new Error('Authentication required')
 
-      if (!base64) {
-        throw new Error('No base64 data returned from image picker')
+      const actions = []
+      if (
+        asset.width > MAX_IMAGE_DIMENSION ||
+        asset.height > MAX_IMAGE_DIMENSION
+      ) {
+        actions.push({
+          resize:
+            asset.width >= asset.height
+              ? { width: MAX_IMAGE_DIMENSION }
+              : { height: MAX_IMAGE_DIMENSION },
+        })
       }
 
-      const extFromUri = uri.split('.').pop()
-      const ext =
-        extFromUri && extFromUri.length <= 4 ? extFromUri.toLowerCase() : 'jpg'
-      const normalizedExt = ext === 'jpg' ? 'jpeg' : ext
-      const path = `${user.id}/${Date.now()}.${ext}`
+      const optimized = await measureAsync('closet.image.optimize', () =>
+        ImageManipulator.manipulateAsync(asset.uri, actions, {
+          base64: true,
+          compress: JPEG_QUALITY,
+          format: ImageManipulator.SaveFormat.JPEG,
+        }),
+      )
 
-      const fileData = decode(base64)
+      if (!optimized.base64) {
+        throw new Error('Image optimization did not return upload data')
+      }
 
-      const { error } = await supabase.storage
-        .from('closet-images')
-        .upload(path, fileData, { contentType: `image/${normalizedExt}` })
+      const path = `${user.id}/${Date.now()}.jpg`
+      const fileData = decode(optimized.base64)
+
+      const { error } = await measureAsync('closet.image.upload', () =>
+        supabase.storage.from('closet-images').upload(path, fileData, {
+          cacheControl: IMMUTABLE_CACHE_SECONDS,
+          contentType: 'image/jpeg',
+        }),
+      )
 
       if (error) throw error
 
