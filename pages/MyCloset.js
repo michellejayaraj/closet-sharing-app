@@ -19,8 +19,16 @@ import { ScreenHeader } from '../components/ui/ScreenHeader'
 import { colors, spacing, typography } from '../lib/theme'
 
 export function MyCloset() {
-  const { myCloset, loading, addToMyCloset, deleteFromMyCloset, refetch } =
-    useCloset()
+  const {
+    myCloset,
+    loading,
+    loadingMore,
+    hasMore,
+    addToMyCloset,
+    deleteFromMyCloset,
+    loadMore,
+    refetch,
+  } = useCloset()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
@@ -102,6 +110,8 @@ export function MyCloset() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
+          onEndReached={hasMore ? loadMore : undefined}
+          loadingMore={loadingMore}
         />
       )}
 

@@ -128,3 +128,62 @@ test('Supabase configuration comes from validated public environment variables',
   assert.match(envExample, /^EXPO_PUBLIC_SUPABASE_URL=/m)
   assert.match(envExample, /^EXPO_PUBLIC_SUPABASE_ANON_KEY=/m)
 })
+
+test('group screens avoid per-group and per-member closet requests', async () => {
+  const [groupsSource, detailSource] = await Promise.all([
+    readFile('pages/Groups.js', 'utf8'),
+    readFile('pages/GroupDetail.js', 'utf8'),
+  ])
+
+  assert.match(groupsSource, /rpc\(\s*['"]get_my_groups_with_previews['"]/)
+  assert.doesNotMatch(groupsSource, /groupsBase\.map\(async/)
+  assert.match(detailSource, /\.in\(['"]user_id['"], otherMemberIds\)/)
+  assert.doesNotMatch(detailSource, /otherMembers\.map\(async/)
+})
+
+test('new closet photos are resized, compressed, and cached', async () => {
+  const uploadSource = await readFile(
+    'components/modals/AddItemModal.js',
+    'utf8',
+  )
+
+  assert.match(uploadSource, /MAX_IMAGE_DIMENSION = 1200/)
+  assert.match(uploadSource, /JPEG_QUALITY = 0\.72/)
+  assert.match(uploadSource, /ImageManipulator\.manipulateAsync/)
+  assert.match(uploadSource, /SaveFormat\.JPEG/)
+  assert.match(uploadSource, /cacheControl: IMMUTABLE_CACHE_SECONDS/)
+  assert.match(uploadSource, /IMMUTABLE_CACHE_SECONDS = ['"]31536000['"]/)
+  assert.doesNotMatch(uploadSource, /base64:\s*true[^]*launchImageLibraryAsync/)
+})
+
+test('large closet and borrowing lists load in bounded pages', async () => {
+  const [closetSource, borrowedSource] = await Promise.all([
+    readFile('hooks/useCloset.js', 'utf8'),
+    readFile('pages/BorrowedItems.js', 'utf8'),
+  ])
+
+  assert.match(closetSource, /CLOSET_PAGE_SIZE = 24/)
+  assert.match(closetSource, /\.range\(0, CLOSET_PAGE_SIZE - 1\)/)
+  assert.match(closetSource, /loadMore/)
+  assert.match(borrowedSource, /BORROWED_PAGE_SIZE = 20/)
+  assert.match(
+    borrowedSource,
+    /\.range\(offset, offset \+ BORROWED_PAGE_SIZE - 1\)/,
+  )
+  assert.match(borrowedSource, /onEndReached=\{loadMore\}/)
+})
+
+test('screen data uses the cached session and records slow operations', async () => {
+  const [sessionSource, performanceSource, groupsSource] = await Promise.all([
+    readFile('lib/session.js', 'utf8'),
+    readFile('lib/performance.js', 'utf8'),
+    readFile('pages/Groups.js', 'utf8'),
+  ])
+
+  assert.match(sessionSource, /supabase\.auth\.getSession\(\)/)
+  assert.doesNotMatch(sessionSource, /supabase\.auth\.getUser\(\)/)
+  assert.match(performanceSource, /SLOW_OPERATION_MS = 1000/)
+  assert.match(performanceSource, /__CLOSET_PERFORMANCE_REPORTER__/)
+  assert.match(groupsSource, /groupsCacheByUser/)
+  assert.match(groupsSource, /measureAsync\(['"]groups\.load['"]/)
+})

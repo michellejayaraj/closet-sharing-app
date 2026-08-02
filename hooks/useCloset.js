@@ -6,28 +6,35 @@ import {
   useCallback,
 } from 'react'
 import { supabase } from '../lib/supabase'
+import { getSessionUser } from '../lib/session'
+import { measureAsync } from '../lib/performance'
 
 const ClosetContext = createContext(null)
+const CLOSET_PAGE_SIZE = 24
 
 export function ClosetProvider({ children }) {
   const [myCloset, setMyCloset] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
 
   const loadCloset = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const user = await getSessionUser()
     if (!user) {
       setLoading(false)
       setMyCloset([])
+      setHasMore(false)
       return
     }
 
-    const { data, error } = await supabase
-      .from('closet_items')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+    const { data, error } = await measureAsync('closet.load.initial', () =>
+      supabase
+        .from('closet_items')
+        .select('id, name, image_url, borrowed, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .range(0, CLOSET_PAGE_SIZE - 1),
+    )
 
     if (error) {
       console.error('Failed to load closet:', error)
@@ -40,9 +47,48 @@ export function ClosetProvider({ children }) {
           borrowed: item.borrowed,
         })),
       )
+      setHasMore(data.length === CLOSET_PAGE_SIZE)
     }
     setLoading(false)
   }, [])
+
+  const loadMore = useCallback(async () => {
+    if (loading || loadingMore || !hasMore) return
+
+    setLoadingMore(true)
+    try {
+      const user = await getSessionUser()
+      if (!user) return
+
+      const offset = myCloset.length
+      const { data, error } = await measureAsync('closet.load.more', () =>
+        supabase
+          .from('closet_items')
+          .select('id, name, image_url, borrowed, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + CLOSET_PAGE_SIZE - 1),
+      )
+
+      if (error) {
+        console.error('Failed to load more closet items:', error)
+        return
+      }
+
+      setMyCloset((previous) => [
+        ...previous,
+        ...(data || []).map((item) => ({
+          id: item.id,
+          name: item.name,
+          imageUrl: item.image_url,
+          borrowed: item.borrowed,
+        })),
+      ])
+      setHasMore((data || []).length === CLOSET_PAGE_SIZE)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [hasMore, loading, loadingMore, myCloset.length])
 
   useEffect(() => {
     const {
@@ -58,12 +104,10 @@ export function ClosetProvider({ children }) {
     loadCloset()
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [loadCloset])
 
   const addToMyCloset = async (item) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const user = await getSessionUser()
     if (!user) return
 
     const { data, error } = await supabase
@@ -107,8 +151,11 @@ export function ClosetProvider({ children }) {
   const value = {
     myCloset,
     loading,
+    loadingMore,
+    hasMore,
     addToMyCloset,
     deleteFromMyCloset,
+    loadMore,
     refetch: () => loadCloset(),
   }
 
