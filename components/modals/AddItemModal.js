@@ -108,6 +108,7 @@ export function AddItemModal({ isOpen, onClose, onAdd }) {
         supabase.storage.from('closet-images').upload(path, fileData, {
           cacheControl: IMMUTABLE_CACHE_SECONDS,
           contentType: 'image/jpeg',
+          upsert: false,
         }),
       )
 

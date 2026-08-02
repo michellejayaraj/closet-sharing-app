@@ -153,6 +153,7 @@ test('new closet photos are resized, compressed, and cached', async () => {
   assert.match(uploadSource, /SaveFormat\.JPEG/)
   assert.match(uploadSource, /cacheControl: IMMUTABLE_CACHE_SECONDS/)
   assert.match(uploadSource, /IMMUTABLE_CACHE_SECONDS = ['"]31536000['"]/)
+  assert.match(uploadSource, /upsert: false/)
   assert.doesNotMatch(uploadSource, /base64:\s*true[^]*launchImageLibraryAsync/)
 })
 
