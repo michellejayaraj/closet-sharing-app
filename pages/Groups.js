@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 } from 'react-native'
 import Swipeable from 'react-native-gesture-handler/Swipeable'
 import { supabase } from '../lib/supabase'
+import { getSessionUser } from '../lib/session'
+import { measureAsync } from '../lib/performance'
 import { useNavigation } from '@react-navigation/native'
 import { Button } from '../components/ui/Button'
 import { GroupCard } from '../components/groups/GroupCard'
@@ -20,26 +22,7 @@ import { ModalShell } from '../components/ui/ModalShell'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
 import { colors, spacing, radii, typography } from '../lib/theme'
 
-async function fetchGroupPreviewImages(groupId) {
-  const { data: members, error: membersError } = await supabase
-    .from('group_members')
-    .select('user_id')
-    .eq('group_id', groupId)
-
-  if (membersError || !members?.length) return []
-
-  const userIds = members.map((m) => m.user_id)
-  const { data: items, error: itemsError } = await supabase
-    .from('closet_items')
-    .select('image_url')
-    .in('user_id', userIds)
-    .not('image_url', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(4)
-
-  if (itemsError) return []
-  return (items || []).map((i) => i.image_url).filter(Boolean)
-}
+const groupsCacheByUser = new Map()
 
 export function Groups() {
   const [groups, setGroups] = useState([])
@@ -53,40 +36,52 @@ export function Groups() {
   const [saving, setSaving] = useState(false)
   const navigation = useNavigation()
 
-  useEffect(() => {
-    loadGroups()
-  }, [])
-
-  const loadGroups = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+  const loadGroups = useCallback(async () => {
+    const user = await getSessionUser()
     if (!user) {
       setLoading(false)
       return
     }
     setCurrentUserId(user.id)
 
-    const { data, error: loadError } = await supabase
-      .from('group_members')
-      .select('group_id, role, groups(id, name, invite_code, created_by)')
-      .eq('user_id', user.id)
+    const cachedGroups = groupsCacheByUser.get(user.id)
+    if (cachedGroups) {
+      setGroups(cachedGroups)
+      setLoading(false)
+    }
+
+    const { data, error: loadError } = await measureAsync('groups.load', () =>
+      supabase.rpc('get_my_groups_with_previews'),
+    )
 
     if (loadError) {
       console.error('Failed to load groups:', loadError)
-      setGroups([])
+      if (!cachedGroups) setGroups([])
     } else {
-      const groupsBase = data.map((row) => ({ ...row.groups, role: row.role }))
-      const groupsWithPreviews = await Promise.all(
-        groupsBase.map(async (group) => ({
-          ...group,
-          previewImages: await fetchGroupPreviewImages(group.id),
-        })),
-      )
-      setGroups(groupsWithPreviews)
+      const nextGroups = (data || []).map((group) => ({
+        ...group,
+        previewImages: group.preview_images || [],
+      }))
+      groupsCacheByUser.set(user.id, nextGroups)
+      setGroups(nextGroups)
     }
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    loadGroups()
+  }, [loadGroups])
+
+  const updateGroups = useCallback(
+    (updater) => {
+      setGroups((previous) => {
+        const next = updater(previous)
+        if (currentUserId) groupsCacheByUser.set(currentUserId, next)
+        return next
+      })
+    },
+    [currentUserId],
+  )
 
   const openCreate = () => {
     setError(null)
@@ -115,7 +110,7 @@ export function Groups() {
       return
     }
 
-    setGroups((prev) => [
+    updateGroups((prev) => [
       ...prev,
       { ...group, role: 'owner', previewImages: [] },
     ])
@@ -140,8 +135,10 @@ export function Groups() {
       return
     }
 
-    const previewImages = await fetchGroupPreviewImages(group.id)
-    setGroups((prev) => [...prev, { ...group, role: 'member', previewImages }])
+    updateGroups((prev) => [
+      ...prev,
+      { ...group, role: 'member', previewImages: [] },
+    ])
     setInviteCode('')
     setJoinOpen(false)
     setSaving(false)
@@ -172,7 +169,7 @@ export function Groups() {
               Alert.alert('Error', 'Could not delete group.')
               return
             }
-            setGroups((prev) => prev.filter((g) => g.id !== group.id))
+            updateGroups((prev) => prev.filter((g) => g.id !== group.id))
           },
         },
       ],
@@ -196,7 +193,7 @@ export function Groups() {
             Alert.alert('Error', 'Could not leave group.')
             return
           }
-          setGroups((prev) => prev.filter((g) => g.id !== group.id))
+          updateGroups((prev) => prev.filter((g) => g.id !== group.id))
         },
       },
     ])

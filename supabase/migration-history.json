@@ -6,11 +6,12 @@
     "20260725201000",
     "20260725202000",
     "20260725203000",
-    "20260725204000"
+    "20260725204000",
+    "20260730200000"
   ],
   "production": {
     "projectRef": "wdbrmpsvgintnpvezkrv",
-    "status": "manually applied and verified"
+    "status": "20260730200000 pending; earlier migrations manually applied and verified"
   },
   "staging": {
     "projectRef": "oibkeihghkjqnersiwhk",

@@ -16,6 +16,8 @@ const availabilityPath =
   'supabase/migrations/20260725203000_add_item_availability_lookup.sql'
 const storageBucketsPath =
   'supabase/migrations/20260725204000_create_application_storage_buckets.sql'
+const groupPreviewsPath =
+  'supabase/migrations/20260730200000_add_group_preview_lookup.sql'
 
 test('canonical migration defines every application table', async () => {
   const schema = await readFile(schemaPath, 'utf8')
@@ -91,6 +93,7 @@ test('migrations avoid destructive reset and drop statements', async () => {
     await readFile(storagePath, 'utf8'),
     await readFile(availabilityPath, 'utf8'),
     await readFile(storageBucketsPath, 'utf8'),
+    await readFile(groupPreviewsPath, 'utf8'),
   ].join('\n')
 
   assert.doesNotMatch(sql, /\bdrop\s+(table|schema|database)\b/i)
@@ -185,4 +188,17 @@ test('item availability does not expose borrower identity', async () => {
     availability,
     /returns table \([^)]*(borrower_id|owner_id|group_id)/i,
   )
+})
+
+test('group previews use one authenticated and bounded database function', async () => {
+  const groupPreviews = await readFile(groupPreviewsPath, 'utf8')
+
+  assert.match(
+    groupPreviews,
+    /function public\.get_my_groups_with_previews\(\)/i,
+  )
+  assert.match(groupPreviews, /membership\.user_id = auth\.uid\(\)/i)
+  assert.match(groupPreviews, /limit 4/i)
+  assert.match(groupPreviews, /from public, anon/i)
+  assert.match(groupPreviews, /to authenticated/i)
 })
